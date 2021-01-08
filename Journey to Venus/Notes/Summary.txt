@@ -1,0 +1,278 @@
+# Jittipat Shobbakbun
+# 11/13/2020
+# Summary.txt
+
+Name:
+
+Journey to Venus
+or  Validate
+
+
+Main plot:
+
+Travelling through space in a 3 years and 3 months long journey to confirm the life sign on Venus.
+Might be a massive solar storm that cut the communication with Earth, messing the electronics, and set the ship off course. Explain the lack of communication/planning and frequent malfunction.
+
+The ship would have to rely on unconventional mean to locate themselves and establish connection with Earth and complete the mission.
+
+Resources:
+
+in storage  : Good food            [consumable] - require 1 proteins(Beans) / 1 carbohydrate(Potato) / 0.5 fat (Vegetable oil)
+              Moderate food        [consumable] - require 1 proteins(Beans) / 1 carbohydrate(Potato)
+              Small food           [Consumable] - require 1 proteins(Beans) or 1 carbohydrate(Potato)
+              Metal Filament       [consumable] - Filament for creating spare parts with 3D printer
+              Pump                 [spare part]
+              Light bulb           [spare part]
+              Wire                 [spare part]
+              Metal plate          [spare part]
+              Electronic component [spare part]
+              Mechanical component [spare part]
+              Grey tape            [consumable] - Some people called it 'Duct tape'. It is useful for temporary (perhaps semi-permanently) fixing leaks and ruptures.
+              Tools Box            [tool] - A box with many tools for general repairing and maintenance
+              Cup                  [tool]
+              Cloth                [consumable] - A piece of synthetic cloth. Useful for manufacturing clothes
+              Pack of Beans        [consumable]
+              Potato               [consumable]
+              Vegetable oil        [consumable] - Make from beans. It is essential for cooking a good meal.
+
+in container: Clean water
+              Waste Water
+              Electricity
+              Air (Carbon rich)
+              Air (Oxygen rich)
+              Fuel
+              Heat
+
+Classes:
+
+Player
+Screen
+ResourceNode - might use this for valves too
+Object
+Module - map for the ship
+MapNode
+
+GameState:
+{"player":character("Linda"), }
+
+Malfunctions:
+Resource nodes leak - All module - gradual(accumulative till fail)
+Reactor malfunction - reactor - rare (more than 1 type malfunction)
+Light malfunction - module with light (probably every module)
+connection broken (link between two resource node leak/rupture) - module that cause the failure - accumulative + high pressure
+Normal malfunction - All module - accumulative - require spare part
+Object Broken - vary(oxygen gen broken, 3d printer broken) - need spare parts
+
+Story Events:
+Solar storm - Whole ship - After the tutorial + around a month with connection to the base.
+Relocate the following convoy - Communication/Observatory(in lab)
+
+Random events:
+Rupture - All module - rare
+Electronically Disrupted(from electromagnetic radiation and stuff) - All module - very rare
+
+Characters:
+
+Might allow player to play all the character. (Swap between each one and plan all their move)
+
+Mechanical Engineer
+Biological scientists
+Astronomer/Captain - Or you if it is first person
+Computer Engineer
+Doctor/Chef
+Physicist(Researcher)
+
+
+Main gameplay:
+
+A turn base game. Each turn depend on the situation. Some turn might be a month long, some might be week long. Most turn probably will be week long.
+Might have five minute turn for emergency situation, or almost real time for doing things with the screen.
+
+Resource management and System diagnostic. Three years is a long time. The crew need to allocate resource probably to survive. Their equipment will eventually break too, so they must fix them or prevent them from failing in the first place.
+Multiple gauges, bars, and values that control each module.(or maybe just a text-terminal, if the graphic is too hard to do)
+Setting values for most efficient working or to preserve the machine.
+Dealing with anomalies and errors.
+Looking through logs of automated system for error or sign of failure.
+Manage time.
+Setting routine, fast forward time, see the result. (Like planting potatoes and wait for food)
+
+The map will consist of the ISP(International Space Port) at the start, the training area(a kind of tutorial), and the ship.
+
+Space ship.
+Two artificial-gravity ring and many other modules (engine, reactor, life support, Living space, Greenhouse)
+
+Mini Map
+
+                                                [--]                                [--]
+                                                 []                                  []
+                                                 []                                  []
+[Engine]-[Reactor]-[Fuel]-[Storage]-[Ring Core/Central Maintenance]-[Life support]-[Ring core]-[Airlock/UAV]-[command Module]
+                                                 []                                  []
+                                                 []                                  []
+                                                [--]                                [--]
+
+                [-]     [-]                   [Com]                  [Liv]
+                 |       |                      |                      |
+                 |       |                      |                      |
+[E]-[R]-[F]-[S]-[2]-[L]-[1]-[A]-[C]    [Gar]-[Ring2]-[Lab]    [Cr1]-[Ring1]-[Cr2]
+                 |       |                      |                      |
+                 |       |                      |                      |
+                [-]     [-]                   [Wor]                  [Sto]
+
+
+Full Picture
+
+            ___                    _____  _____
+           |   |                  /     \/     \
+           |___|                  |     ||     |
+   _____   |   |                  |     ||     |
+|>|     \ /|   |\                  \-v-/  \-v-/
+  >-----|-||___|I---|         |--I--|_|----|_|-I--|
+|>|       ||___ |   |         |  |   _  []  _  |  |
+  >-----|-||   |I___|         |__I__| |____| |_I__|
+|>|_____/ \|   |/==|=         =|===/-^-\==/-^-\==|=
+           |___|                  |     ||     |
+           |   |                  |     ||     |
+           |___|                  \_____/\_____/
+
+
+Might include ship customization (Changing modules/rooms) -NOT A PIORITY-
+Smaller modules/rooms augmentation
+
+How to not make a 3 years long trip boring to play?
+- Forward time
+- Character interaction
+- Relation development
+- Emergency/random events (Debris? Resource leak? Communication error?)
+- story
+
+How to make repeated maintenance not boring?
+- puzzle or mini-game?
+- controlling values
+- fixing in minigames (what minigames can I do with text?)
+- using GraphNode for piping!!!
+
+Modules:
+
+System:
+Electrical
+Water Pipes
+Air Ducts
+High Voltage Electrical Wiring
+
+Screen
+Would be very dependent on screen size
+  ______ _____ _________
+ / STAT \ LOG \ WARNING \
+│        └─────┴─────────┴─────────────────────────────────────────────┐
+│  Temperature(C)                                                      │
+│ [■■■■■■■■■■■■■------------] [1203]                                   │
+│  Pressure(Bar)                                                       │
+│ [■■■■■■■■■■■■■------------] [0124]                                   │
+│  Coolant Flow Rate(m^3/s)                                            │
+│ [■■■■■■■■■■■■■■■■■■■■■■■█-] [24.5] [A-25]                            │
+│  Fuel                                                                │
+│ [■■■■■■■■■■■■■------------] [057%]                                   │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                         NEXTPAGE >>> |
+└──────────────────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────────────────
+> override set coolant 0
+
+potential commands: NEXT-NEXTPAGE-RIGHT(would be nice if I can use arrow key)
+                    SET : OVERRIDE SET COOLANT : OVERRIDE SET COOLANT 0
+                    OVERIDE COOLANT MAN
+                    COOLANT AUT
+                    OVERRIDE FUEL DUMP
+                    RESET
+                    LOG
+                    WARNING
+                    PRE-PREVIOUS-PREVIOUSPAGE-LEFT
+                    CONTROL ROD
+                    OPEN PRESSURERELEASEVAULE
+                    STARTUP
+                    SHUTDOWN
+
+(Must use override before every potentially dangerous command)
+
+  ______ _____ _________
+ / STAT \ LOG \ WARNING \
+│        └─────┴─────────┴─────────────────────────────────────────────┐
+│  Primary Valve            [  ON]                                     │
+│  Pressure Release Valve   [OFF ]                                     │
+│  High Temp                [NO  ]                                     │
+│  Operating                [ YES]                                     │
+│  Coolant Pump             [AUTO]                                     │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│ <<< PREPAGE                                             NEXTPAGE >>> |
+└──────────────────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────────────────
+> override set coolant 0
+
+  ______ _____ _________
+ / STAT \ LOG \ WARNING \
+│        └─────┴─────────┴─────────────────────────────────────────────┐
+│  Temperature(C)                                                      │
+│ [■■■■■■■■■■■■■------------] [1203]                                   │
+│  Pressure(Bar)                                                       │
+│ [■■■■■■■■■■■■■------------] [0124]                                   │
+│  Coolant Flow Rate(m^3/s)                                            │
+│ [█■■■■■■■■■■■■■■■■■■------] [21.3] [M-00]                            │
+│  Fuel                                                                │
+│ [■■■■■■■■■■■■■------------] [057%]                                   │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────────────────
+> log
+
+
+  ______ _____ _________
+ / STAT / LOG \ WARNING \
+├──────┘       └─────────┴─────────────────────────────────────────────┐
+│ MM/DD/YY - Temp-Min/Max | Pres | Cool | Fuel                  UP   ▲ │
+│                                                                      │
+│ 05/22/93 -   1201/1205  | 0125 | 23.5 | 058%                         │
+│ 05/23/93 - Manual set CFR to 12                                      │
+│ 05/23/93 -   1212/2055   | 0314 | 12.2 | 058%                        │
+│ 05/24/93 -   1201/1205   | 0120 | 25.3 | 057%                        │
+│ 05/25/93 -   1201/1205   | 0124 | 24.5 | 057%                        │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                               DOWN ▼ │
+└──────────────────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────────────────
+> warning
+
+
+  ______ _____ _________
+ / STAT / LOG / WARNING \
+├──────┴─────┘           └─────────────────────────────────────────────┐
+│  WARING                                                              │
+│ - Low Coolant Flow Rate                                              │
+│ - Low CFR setting                                                    │
+│                                                                      │
+│  CAUTION                                                             │
+│ - High Temp Logged                                                   │
+│ - High Pressure Logged                                               │
+│                                                                      │
+│  NOTICE                                                              │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘

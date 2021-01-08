@@ -1,0 +1,209 @@
+
+                                                  [--]                                [--]
+                                                   []                                  []
+                                                   []                                  []
+[Engine]-[Reactor]-[Fuel]-[Storage]-[Ring Core/Central Maintenance]-[Life support]-[Ring core]-[Airlock/UAV]-[command Module]
+                                                   []                                  []
+                                                   []                                  []
+                                                  [--]                                [--]
+
+                [-]     [-]                   [Com]                  [Liv]
+                 |       |                      |                      |
+                 |       |                      |                      |
+[E]-[R]-[F]-[S]-[2]-[L]-[1]-[A]-[C]    [Gar]-[Ring2]-[Lab]    [Cr1]-[Ring1]-[Cr2]
+                 |       |                      |                      |
+                 |       |                      |                      |
+                [-]     [-]                   [Sto]                  [Sto]
+
+
+ENGINE/ENGINEERING
+
+name          : Engine Room
+favor1        : It is a module for propulsion of the ship. There are internal fuel tank and battery.
+objects       : "Fuel tank", "Battery", "Light", "Light Switch", "Control Panel", "Thruster 1", "Thruster 2", "Thruster 3"
+ResourceNodes : "Fuel tank":ResourceNode("(E)Fuel tank", "Fuel", 500, 500)
+                "Battery":ResourceNode("(E)Battery", "Electricity", 100, 100)
+                "Thruster1-Fuel":ResourceNode("(E)Thruster1-Fuel", "Fuel", 50, 50, [(self.resource[Fuel tank], "PI")])
+                "Thruster1-Elec":ResourceNode("(E)Thruster1-Elec", "Electricity", 10, 10, [(self.resource[Battery], "I")])
+                "Thruster2-Fuel":ResourceNode("(E)Thruster2-Fuel", "Fuel", 50, 50, [(self.resource[Fuel tank], "PI")])
+                "Thruster2-Elec":ResourceNode("(E)Thruster2-Elec", "Electricity", 10, 10, [(self.resource[Battery], "I")])
+                "Thruster3-Fuel":ResourceNode("(E)Thruster3-Fuel", "Fuel", 50, 50, [(self.resource[Fuel tank], "PI")])
+                "Thruster3-Elec":ResourceNode("(E)Thruster3-Elec", "Electricity", 10, 10, [(self.resource[Battery], "I")])
+                "Light":ResourceNode("(E) Light", "Electricity", 1, 0, [(self.resource[Battery], "I")])
+
+|--|--|--|--|--|--|--
+            ___
+           |   |
+           |___|
+   _____   |   |
+|>|     \ /|   |\
+  >-----|-||___|I---|
+|>|       ||___ |   |
+  >-----|-||   |I___|
+|>|_____/ \|   |/==|=
+           |___|
+           |   |
+           |___|
+|-------------------|
+FUEL
+|--|--|--|--|--|--|--
+     _____  _____
+    /     \/     \
+    |     ||     |
+    |     ||     |
+     \-v-/  \-v-/
+|--I--|_|----|_|-I--|
+|  |   _  []  _  |  |
+|__I__| |____| |_I__|
+=|===/-^-\==/-^-\==|=
+    |     ||     |
+    |     ||     |
+    \_____/\_____/
+|-------------------|
+STORAGE
+|--|--|--|--|--|--|--
+
+
+    _____________
+   /             \
+  /               \
+|--\_____________/--|
+|  |             |  |
+|__I_____________I__|
+=|=/             \=|=
+  \               /
+   \_____________/
+
+|-------------------|
+Airlock/ROV_HUB
+|--|--|--|--|--|--|--
+
+         ___
+        /   \
+    __{| [o] |}__
+   /   /\___/\   \
+|--I   |     |   I--|
+|  |   ^     ^   |  |
+|__I--|---|---|--I__|
+=|=\_____________/=|=
+      \_______/
+        '-=-'
+
+|-------------------|
+LABORATORY
+|--|--|--|--|--|--|--
+
+
+
+
+
+|-I--T----T----T--I-|
+|  |   [=====]   |  |
+|__|_____________|__|
+==I               I==
+
+
+
+|-------------------|
+COMMAND_POD
+|--|--|--|--|--|--|--
+
+
+
+
+
+|--I-------------I--|
+|  |             |  |
+|__I_____________I__|
+=|========|========|=
+
+
+
+|-------------------|
+GARDEN
+|--|--|--|--|--|--|--
+
+
+
+
+
+|--I-------------I--|
+|  |             |  |
+|__I_____________I__|
+=|========|========|=
+
+
+
+|-------------------|
+REACTOR
+|--|--|--|--|--|--|--
+
+
+
+    _--'''T'''--_
+  /   /   |   \   \
+|-I--T----T----T--I-|
+|  |   [IIIII]   |  |
+|__|_____________|__|
+==I  \__|===|__/  I==
+   \      _      /
+     ' - /_\ - '
+
+|-------------------|
+LIFESUPPORT
+|--|--|--|--|--|--|--
+
+
+
+
+
+|--I-------------I--|
+|  |             |  |
+|__I_____________I__|
+=|========|========|=
+
+
+
+|-------------------|
+RING
+|--|--|--|--|--|--|--
+
+
+
+
+
+
+
+
+
+
+
+|--I-------------I--|
+|  |             |  |
+|__I_____________I__|
+=|========|========|=
+
+
+
+
+
+
+
+
+
+|-------------------|
+CREWQUARTERS
+|--|--|--|--|--|--|--
+
+
+    _____________
+   /             \
+  /  [] [] [] []  \
+|-\ /----\ /----\ /-|
+|  |      |      |  |
+|__|      |      |__|
+==/ \----/ \----/ \==
+  \  [] [] [] []  /
+   \_____________/
+
+|-------------------|

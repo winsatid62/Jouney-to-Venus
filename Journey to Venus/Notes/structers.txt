@@ -1,0 +1,49 @@
+----------------------------- objects -----------------------------
+
+__init__
+  name        : Name of the object (used for commands too)
+  flavor      : String describing the object
+  location    : String explaining its location
+  hasInvent   : Bool default = False
+  hasResource : Bool default = False
+
+--------------------------- ResourceNode --------------------------
+
+__init__
+  name
+  flavor   : str  description
+  type     : str  Clean water , Waste Water , Electricity , Air (Carbon rich) , Air (Oxygen rich) , Fuel , Heat
+  capacity : Num  default = 100
+  amount   : Num  default = 0
+  links    : List default = []  list of tuples
+
+             link structure : (other, type, maxFlow, updated(True/False))
+
+----------------------------- Modules -----------------------------
+
+Example of module's resource dictionary
+  "Fuel tank":ResourceNode("(E)Fuel tank", "Fuel", 500, 500)
+  "Battery":ResourceNode("(E)Battery", "Electricity", 100, 100)
+  "Thruster1-Fuel":ResourceNode("(E)Thruster1-Fuel", "Fuel", 50, 50, [(self.resource[Fuel tank], "PI")])
+  [(self.resource[Fuel tank], "PI")] mean Pump In from Fuel tank to self which will also generate (Thruster1-Fuel, "PO") in Fuel tank's connection list
+  "Thruster1-Elec":ResourceNode("(E)Thruster1-Elec", "Electricity", 10, 10, [(self.resource[Battery], "I")])
+  "Thruster2-Fuel":ResourceNode("(E)Thruster2-Fuel", "Fuel", 50, 50, [(self.resource[Fuel tank], "PI")])
+  "Thruster2-Elec":ResourceNode("(E)Thruster2-Elec", "Electricity", 10, 10, [(self.resource[Battery], "I")])
+  "Thruster3-Fuel":ResourceNode("(E)Thruster3-Fuel", "Fuel", 50, 50, [(self.resource[Fuel tank], "PI")])
+  "Thruster3-Elec":ResourceNode("(E)Thruster3-Elec", "Electricity", 10, 10, [(self.resource[Battery], "I")])
+  "Light":ResourceNode("(E) Light", "Electricity", 1, 0, [(self.resource[Battery], "I")])
+
+------------------------------ Saves ------------------------------
+
+Dictionary
+
+{
+  "index" : n,
+  "name"  : "slot"+str(n),
+  "time"  : time.time(),
+  "Characters" : [ply, ch2, ch3 ch4, ch5, ch6 ]
+  "ship"  : ship #listOfModules
+  "sectionKey" : "ISP:RA:YourRoom"
+  "sectionCount" : 0
+  "textLog" : ["something", "something", "another something"]
+}

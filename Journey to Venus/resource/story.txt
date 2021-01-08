@@ -1,0 +1,35 @@
+[formatExplanations-
+# Jittipat Shobbakbun
+# 01/08/2021
+# MainGame.py
+
+This is a text containing most of the story.
+Each section is contained in a pair of square brackets with keywords.
+There are two part for each line.
+
+TYPE : massage
+     or
+NAME : speech
+
+List of types: THOG - Thought of the current character.
+               DCPT - Descriptions for objects, world, or story. (No speaker)
+               FDBK - Game's feedback and not a part of the story. (DIM(grey) texts)
+               NEWL - New line
+
+If the left side doesn't fall into any TYPE listed here, it will be considered a NAME
+-formatExplanations]
+
+[tutorial-
+You  : What time is it?
+You  : Yawn....
+You  : Oh no! It's already half over nine
+THOG : I have a meeting is at 9:30 AM!
+DCPT :
+FDBK : You can use command LOOK to look around the room.
+NEWL : \n
+FDBK : You can also use LOOK with each object. (E.G. LOOK LUGGAGE)
+NEWL : \n
+FDBK : You can use MOVE to go to doors or objects. (E.G. MOVE FRONT DOOR) and moving to doors will go to the room beyond that door.
+NEWL : \n
+FDBK : You can INSPECT some object for more detail.
+-tutorial]
