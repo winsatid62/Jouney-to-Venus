@@ -15,6 +15,8 @@ from subprocess import call
 # global variables
 textDelayMultiplier = 1
 debug = False
+debugWidth = 20
+debugHeight = 10
 textSpeed = 1
 screenWidth = 0
 screenHeight = 0
@@ -218,30 +220,18 @@ def characterProcessing(my_stdscr, pressList = [-1 for x in range(7)]):
     return holdCh, holdCount, pressList
 
 def debugWindowUpdate(debugWindow, *args):
-#screenName, debugWindow, holdCh, loopCount, allStart, stop, loopLength, actualLoopLength, averageLoopLength, pressList, step, stepperTime):
     '''show the debug overley with informations (arguments)'''
     debugWindow.erase()
     for index, arg in enumerate(args):
         if type(arg) == int:
-            debugWindow.addstr(index, (20-len("{}".format(str(arg)))), "{}".format(str(arg)))
+            debugWindow.addstr(index, (debugWidth-len("{}".format(str(arg)))), "{}".format(str(arg)))
         elif type(arg) == float:
-            debugWindow.addstr(index, (20-len("{:.5f}".format(arg))), "{:.5f}".format(arg))
+            debugWindow.addstr(index, (debugWidth-len("{:.5f}".format(arg))), "{:.5f}".format(arg))
         elif type(arg) == str:
-            debugWindow.addstr(index, (20-len("{}".format(arg))), "{}".format(arg))
+            debugWindow.addstr(index, (debugWidth-len("{}".format(arg))), "{}".format(arg))
         else:
-            debugWindow.addstr(index, (20-len("{}".format(str(arg)))), "{}".format(str(arg)))
-    '''
-    debugWindow.addstr(0, (20-len("{}".format([holdCh]))), "{}".format([holdCh]))
-    debugWindow.addstr(1, (20-len("{:.2f}".format(loopCount/100))), "{:.2f}".format(loopCount/100))
-    debugWindow.addstr(2, (20-len("{:.2f}".format(stop - allStart))), "{:.2f}".format(stop - allStart))
-    debugWindow.addstr(3, (12), "{:.6f}".format(loopLength))
-    debugWindow.addstr(4, (12), "{:.6f}".format(actualLoopLength))
-    debugWindow.addstr(5, 20-len("{:.6f}".format(1/max(actualLoopLength,0.000001))), "{:.6f}".format(1/max(actualLoopLength,0.000001)))
-    debugWindow.addstr(6, (12), "{:.6f}".format(averageLoopLength))
-    debugWindow.addstr(7, 20-len(str(screenName)), str(screenName))
-    debugWindow.addstr(8, (20-len("{}, {}".format(step, stepperTime))), "{}, {}".format(step, stepperTime))
-    '''
-    debugWindow.noutrefresh(0,0, 0,screenWidth-20,screenHeight,screenWidth)
+            debugWindow.addstr(index, (debugWidth-len("{}".format(str(arg)))), "{}".format(str(arg)))
+    debugWindow.noutrefresh(0,0, 0,screenWidth-debugWidth,screenHeight,screenWidth)
 
 #Commands
 def commandHandeler(input):
@@ -534,6 +524,7 @@ def intro(stdscr, debugWindow, allStart):
                     autoUp = False
 
         #Logic
+        stepperTime = stepper.getTime()
         if paused:
             if waited:
                 if waitSelector.getValue() == 0:
@@ -651,6 +642,10 @@ def main(stdscr):
     global screenWidth
     global screenHeight
 
+    curses.curs_set(False)
+    stdscr.nodelay(True)
+    debugWindow = curses.newpad(debugHeight, debugWidth)
+
     try:
         storyFile = open("resource/story.txt", "r").read()
     except:
@@ -678,10 +673,6 @@ def main(stdscr):
     except:
         pass
         hasSave = False
-
-    curses.curs_set(False)
-    stdscr.nodelay(True)
-    debugWindow = curses.newpad(10, 20)
 
     #TEMPORARY VARIABLES <------------------------ (REMOVE BEFORE USE)
     debug = True
