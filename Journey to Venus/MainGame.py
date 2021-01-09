@@ -12,17 +12,29 @@ import os
 import sys
 from subprocess import call
 import logging
+import threading
 
 # global variables
 textDelayMultiplier = 1
 debug = False
-debugWidth = 30
-debugHeight = 20
 textSpeed = 1
 screenWidth = 0
 screenHeight = 0
-textUpOffset = -1 # set to -1 to use textUpOffsetRatio
-textUpOffsetRatio = 0
+
+months = {
+    "January":31,
+    "Febuary":28,
+    "March":31,
+    "April":30,
+    "May":31,
+    "June":30,
+    "July":31,
+    "August":31,
+    "September":30,
+    "October":31,
+    "November":30,
+    "December":31
+}
 
 keyBinding = {
     "EmergencyEscape":"Q",
@@ -46,7 +58,11 @@ commandDict = {
 options = {"Text display speed":1}
 
 #screen config
-upperlineRY = 4
+debugWidth = 30
+debugHeight = 20
+textUpOffset = -1 # set to -1 to use textUpOffsetRatio
+textUpOffsetRatio = 0
+upperlineRY = 3
 lowerlineRY = 4
 
 #setup the station map
@@ -85,7 +101,7 @@ gameState = {
     },
     "currentCharacterIndex":4,
     "textLog":[],
-    "timer":0, # time in seconds after Jan 1, 2070
+    "timer":0, # time in seconds after Jan 1, 2070 1m=60 1h=3600 1d=86400
     "":None,
 }
 
@@ -181,7 +197,6 @@ def storyInterpreter(list, key):
             seperatedTexts.append(testList + [""])
         elif len(testList) == 1 and testList[0] == "":
             seperatedTexts.append(["NEWL", "-"])
-    logging.debug(str(seperatedTexts))
     formattedTextList = []
     addLines = None
     for index, (type, massage) in enumerate(seperatedTexts):
@@ -195,9 +210,13 @@ def storyInterpreter(list, key):
             massageList = str_wrap(massage, screenWidth)
             formattedMassageList = [[line, curses.A_DIM] for line in massageList]
         elif type == "NEWL":
-            addLines = ["" for i in range(len(massage))]
+            if addLines == None:
+                addLines = ["" for i in massage]
+            else:
+                addLines += ["" for i in massage]
             continue
         else:
+            addLines = None
             pre = "{} : ".format(type)
             space = " " * len(pre)
             massageList = str_wrap('"' + massage + '"', screenWidth - len(pre))
@@ -206,7 +225,7 @@ def storyInterpreter(list, key):
                     formattedMassageList.append(pre + line)
                 else:
                     formattedMassageList.append(space + line)
-        if addLines != None:
+        if addLines != None and type != "NEWL":
             formattedTextList.append(addLines + formattedMassageList)
             addLines = None
         else:
@@ -221,6 +240,36 @@ def str_hardWrap(string, width):
     for i in range(lineCount):
         retList[i] = string[width*i:(width*(i+1))]
     return retList
+
+def toDate(sec):
+    '''take time in seconds after Jan 1, 2070 and return date in format {Y:, M:, D:, H:, M:, S:}'''
+    y = sec//(365*60*60*24)+2070
+    totalDays = 0
+    mo = None
+    for month, days in months.items():
+        totalDays += days
+        if (sec%(365*60*60*24))//(60*60*24) < totalDays:
+            mo = month
+            break
+    d = (sec%(365*60*60*24))//(60*60*24)-(totalDays-months[mo])
+    h = (sec%(60*60*24))//(60*60)
+    m = (sec%(60*60))//(60)
+    m = sec%(60)
+    return {"Y":y, "Mo":mo, "D":d, "H":h, "Mi":mi, "S":s}
+
+def modifyTime(sec, Y=0, Mo=0, D=0, H=0, Mi=0, S=0):
+    '''add or subtract time in seconds in year, month, etc.'''
+    totalDays = 0
+    mo = None
+    dayInTheMonth = 0
+    for month, days in months.items():
+        totalDays += days
+        if (sec%(365*60*60*24))//(60*60*24) < totalDays:
+            mo = month
+            dayInTheMonth = days
+            break
+    sec += (Y*(365*60*60*24)) + (Mo*dayInTheMonth*24*60*60) + (D*24*60*60) + (H*60*60) + (Mi*60) + S
+    return sec
 
 #Loop Components
 def characterProcessing(my_stdscr, pressList = [-1 for x in range(7)]):
@@ -435,18 +484,20 @@ def save(stdscr, debugWindow, allStart):
 def pOption(stdscr, debugWindow, allStart):
     pass
 
+def introTreading(commandsBuffer, gameState, textToDisplay):
+    textToDisplay += storyInterpreter(story, "tutorial")
+
 def intro(stdscr, debugWindow, allStart):
     '''gameLoop for intro'''
     global debug
-    global options
-    global keyBinding
 
     #IntroSetup
     pauseSelector = Slider(0,4,1)
     blinker = Timer(True, 0.6, True)
+
     textToDisplay = []
     textToDisplay += storyInterpreter(story, "tutorial")
-    logging.debug(str(textToDisplay))
+    commandsBuffer = []
 
     #Loop
     loopCount = 0
@@ -524,7 +575,7 @@ def intro(stdscr, debugWindow, allStart):
                         if previousSteping == True:
                             stepper.resume()
                     elif pauseSelector.getValue() == 1:
-                        return "SAVE"
+                        return "pSAVE"
                     elif pauseSelector.getValue() == 2:
                         return "pLOAD"
                     elif pauseSelector.getValue() == 3:
@@ -545,7 +596,9 @@ def intro(stdscr, debugWindow, allStart):
                         paused, previousSteping = pause(stepper, paused, previousSteping)
                         textLog += [["Paused", curses.A_DIM]]
                     else:
+                        commandsBuffer.append(inputUpper)
                         commandHandeler(inputUpper)
+                        saved = False
                     autoUp = True
                     textBuffer = ""
             elif holdCh == keyBinding["DELETE"]:
@@ -593,21 +646,20 @@ def intro(stdscr, debugWindow, allStart):
                     r4 = " <"
                     l0 = r0 = l1 = r1 = l2 = r2 = l3 = r3 = " "
         else:
+            # Text processing
             step = stepper.getStep()
             stepperTime = stepper.getTime()
-            # Text processing
             if step != lastStep:
+                saved = False
                 for line in textToDisplay[step]:
-                    if line == "\\n":
-                        textLog.append(" ")
-                    else:
-                        textLog.append(line)
+                    textLog.append(line)
                 autoUp = True
             if step == len(textToDisplay)-1 and stepper.getProgressing():
                 stepper.pause()
             if step != len(textToDisplay)-1 and not stepper.getProgressing():
                 stepper.resume()
             lastStep = stepper.getStep()
+
             if autoUp:
                 top = max(top,len(textLog)-screenHeight+lowerlineRY+5+textUpOffset)
                 autoUp = False
@@ -645,7 +697,7 @@ def intro(stdscr, debugWindow, allStart):
                 for i in range(1,len(terminalText)):
                     stdscr.addstr(screenHeight-lowerlineRY+1+i, 0, "  {}".format(terminalText[i]))
             #text display
-            for i in range(top,min(top+screenHeight-lowerlineRY-5,len(textLog))):
+            for i in range(top,min(top+screenHeight-lowerlineRY-upperlineRY-1,len(textLog))):
                 if type(textLog[i]) == list:
                     stdscr.addstr(upperlineRY+1+i-top, 0, textLog[i][0], textLog[i][1])
                 elif type(textLog[i]) == str:
