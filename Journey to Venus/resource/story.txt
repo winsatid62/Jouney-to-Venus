@@ -20,16 +20,19 @@ If the left side doesn't fall into any TYPE listed here, it will be considered a
 -formatExplanations]
 
 [tutorial-
-You  : What time is it?
 You  : Yawn....
-You  : Oh no! It's already half over nine
-THOG : I have a meeting is at 9:30 AM!
-DCPT :
-FDBK : You can use command LOOK to look around the room.
-NEWL : \n
-FDBK : You can also use LOOK with each object. (E.G. LOOK LUGGAGE)
-NEWL : \n
-FDBK : You can use MOVE to go to doors or objects. (E.G. MOVE FRONT DOOR) and moving to doors will go to the room beyond that door.
-NEWL : \n
-FDBK : You can INSPECT some object for more detail.
+You  : What time is it?
+You  : Oh no! It's already half over nine!!.
+
+THOG : I have a meeting is at 9:30 AM! I hope I didn't miss much.
+
+DCPT : You are on your bed in the bunk room with five other beds. One of them is empty and the other four beds sat people wearing PGs.
+
+
+
+FDBK : Tip: You can use command LOOK to look around the room.
+FDBK : Tip: You can also use LOOK with each object. (E.G. LOOK LUGGAGE)
+FDBK : Tip: You can use MOVE to go to doors or objects. (E.G. MOVE FRONT DOOR) and moving to doors will go to the room beyond that door.
+FDBK : Tip: You can INSPECT some object for more detail.
+Lacroff : I wonder if I add more text, will the program deal with it correctly. This longggggggg string of text is just to test wrapping and spacing of the text.
 -tutorial]

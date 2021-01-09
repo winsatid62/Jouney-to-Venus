@@ -11,15 +11,18 @@ import curses
 import os
 import sys
 from subprocess import call
+import logging
 
 # global variables
 textDelayMultiplier = 1
 debug = False
-debugWidth = 20
-debugHeight = 10
+debugWidth = 30
+debugHeight = 20
 textSpeed = 1
 screenWidth = 0
 screenHeight = 0
+textUpOffset = -1 # set to -1 to use textUpOffsetRatio
+textUpOffsetRatio = 0
 
 keyBinding = {
     "EmergencyEscape":"Q",
@@ -51,19 +54,19 @@ lowerlineRY = 4
 #setup Map
 
 
-#setup default saveState
-saveState = {
+#setup default gameState
+gameState = {
     "map":{
         "room4012":MapNode(
-            "Room 4012",
-            "This is where you are staying. It is similar to normal hotel rooms found on earth.",
-            "It shaped like an L. The walls are blue with white accents, and the room is basked in a warm orange tinted light."
+            name = "Room 4012",
+            flavor = "This is where you are staying. It is similar to normal hotel rooms found on earth.",
+            flavor2 = "It shaped like an L. The walls are blue with white accents, and the room is basked in a warm orange tinted light."
         ),
         "testSpace":MapNode(
-            "White void",
-            "It is all white. You see nothing but white. There is no horizon line, no sky, no ground. There is nothing but white. ",
-            "There is no shadow, no shade, no perspective. You feel like standing on a normal ground, but you cannot distinguish where the ground start or where the sky end. You can still feel yourself, so that mean can see yourself. You just unable to distinguish it from anything else. It is all white.",
-            "You woke up and all you see is white. You looked around and all you see is white. You can't even see yourself."
+            name = "White void",
+            flavor = "It is all white. You see nothing but white. There is no horizon line, no sky, no ground. There is nothing but white. ",
+            flavor2 = "There is no shadow, no shade, no perspective. You feel like standing on a normal ground, but you cannot distinguish where the ground start or where the sky end. You can still feel yourself, so that mean can see yourself. You just unable to distinguish it from anything else. It is all white.",
+            firstImpression = "You woke up and all you see is white. You looked around and all you see is white. You can't even see yourself."
         ),
     },
     "story":2,
@@ -129,59 +132,86 @@ def wrapper(func, *args, **kwds):
             curses.nocbreak()
             curses.endwin()
 
-def getTexts(list, key):
-    '''gets lines from "story.txt" with coresponding key'''
-    start = list.index("[" + key + "-")
-    end = list.index("-" + key + "]")
-    texts = [list[i] for i in range(start+1,end)]
-    return texts
-
 def str_wrap(string, width):
     '''return a list of lines of text confined to width (not cutting words)'''
     chCount = 0
-    expectedLines = len(string)//width
-    retList = [None for i in range(expectedLines+math.ceil(100/width))]
+    retList = [None]
     list = string.split()
     lastLine = 0
-    for i in range(len(list)):
-        word = list[i]
+    for i, word in enumerate(list):
         if i == 0:
+            retList[0] = word
             chCount += len(word)
+            continue
         else:
             chCount += 1 + len(word)
         if chCount%width == 0:
-            retList[(chCount//width)-1] += (" " + str(word))
             lastLine = (chCount//width)-1
-        else:
-            if lastLine != chCount//width:
-                chCount -= 1 + len(word)
-                chCount += width-(chCount%width)
-                chCount += 1 + len(word)
-            if i == 0:
-                if retList[0] == None:
-                    retList[0] = str(word)
-                else:
-                    retList[0] += str(word)
+            retList[lastLine] += (" " + str(word))
+        elif lastLine != chCount//width:
+            lastLine = chCount//width
+            chCount -= 1 + len(word)
+            if chCount%width == 0:
+                chCount += len(word)
             else:
-                if chCount%width <= len(word)+1:
-                    chCount -= 1
-                    if retList[chCount//width] == None:
-                        retList[chCount//width] = str(word)
-                    else:
-                        retList[chCount//width] += str(word)
-                    lastLine = chCount//width
-                else:
-                    if retList[chCount//width] == None:
-                        retList[chCount//width] = (" " + str(word))
-                    else:
-                        retList[chCount//width] += (" " + str(word))
-                    lastLine = chCount//width
+                chCount += width-(chCount%width)
+                chCount += len(word)
+            retList.append(word)
+        elif lastLine == chCount//width:
+            retList[lastLine] += (" " + str(word))
     while True:
         if None in retList:
             retList.pop(retList.index(None))
         else:
             break
     return retList
+
+def storyInterpreter(list, key):
+    '''gets lines from "story.txt" with coresponding key and format them'''
+    start = list.index("[" + key + "-")
+    end = list.index("-" + key + "]")
+    texts = [list[i] for i in range(start+1,end)]
+    seperatedTexts = []
+    removedLines = 0
+    for string in texts:
+        testList = string.split(" : ")
+        if len(testList) == 2:
+            seperatedTexts.append(testList)
+        elif len(testList) == 1 and testList[0] != "":
+            seperatedTexts.append(testList + [""])
+        elif len(testList) == 1 and testList[0] == "":
+            seperatedTexts.append(["NEWL", "-"])
+    logging.debug(str(seperatedTexts))
+    formattedTextList = []
+    addLines = None
+    for index, (type, massage) in enumerate(seperatedTexts):
+        type = type.strip()
+        formattedMassageList = []
+        if type == "THOG":
+            formattedMassageList = str_wrap("(" + massage + ")", screenWidth)
+        elif type == "DCPT":
+            formattedMassageList = str_wrap(massage, screenWidth)
+        elif type == "FDBK":
+            massageList = str_wrap(massage, screenWidth)
+            formattedMassageList = [[line, curses.A_DIM] for line in massageList]
+        elif type == "NEWL":
+            addLines = ["" for i in range(len(massage))]
+            continue
+        else:
+            pre = "{} : ".format(type)
+            space = " " * len(pre)
+            massageList = str_wrap('"' + massage + '"', screenWidth - len(pre))
+            for i, line in enumerate(massageList):
+                if i == 0:
+                    formattedMassageList.append(pre + line)
+                else:
+                    formattedMassageList.append(space + line)
+        if addLines != None:
+            formattedTextList.append(addLines + formattedMassageList)
+            addLines = None
+        else:
+            formattedTextList.append(formattedMassageList)
+    return formattedTextList
 
 def str_hardWrap(string, width):
     '''return a list of lines of text confined to width (not cutting words)'''
@@ -370,8 +400,17 @@ def menu(stdscr, debugWindow, hasSave, allStart):
         stdscr.noutrefresh()
 
         if debug:
-            debugWindowUpdate(debugWindow, [holdCh], loopCount/100, stop - allStart, loopLength, actualLoopLength,
-                              1/max(actualLoopLength,0.000001), averageLoopLength, "MENU", )
+            debugWindowUpdate(
+                debugWindow,
+                "MENU",
+                [holdCh],
+                loopCount/100,
+                stop - allStart,
+                loopLength,
+                actualLoopLength,
+                1/max(actualLoopLength,0.000001),
+                averageLoopLength,
+            )
 
         curses.doupdate()
 
@@ -405,10 +444,9 @@ def intro(stdscr, debugWindow, allStart):
     #IntroSetup
     pauseSelector = Slider(0,4,1)
     blinker = Timer(True, 0.6, True)
-    textList = getTexts(story, "tutorial")
-    wrappedTextList = []
-    for line in textList:
-        wrappedTextList.append(str_wrap(line, screenWidth))
+    textToDisplay = []
+    textToDisplay += storyInterpreter(story, "tutorial")
+    logging.debug(str(textToDisplay))
 
     #Loop
     loopCount = 0
@@ -502,11 +540,12 @@ def intro(stdscr, debugWindow, allStart):
             if holdCh == "\n":
                 if len(textBuffer) != 0:
                     inputUpper = textBuffer.upper()
+                    textLog += [["> " + str(textBuffer), curses.A_DIM]]#callback on the terminal
                     if inputUpper in commandDict["PAUSE"]:
                         paused, previousSteping = pause(stepper, paused, previousSteping)
+                        textLog += [["Paused", curses.A_DIM]]
                     else:
                         commandHandeler(inputUpper)
-                    textLog += [[str(textBuffer), curses.A_DIM]]#callback on the terminal
                     autoUp = True
                     textBuffer = ""
             elif holdCh == keyBinding["DELETE"]:
@@ -524,7 +563,6 @@ def intro(stdscr, debugWindow, allStart):
                     autoUp = False
 
         #Logic
-        stepperTime = stepper.getTime()
         if paused:
             if waited:
                 if waitSelector.getValue() == 0:
@@ -556,39 +594,39 @@ def intro(stdscr, debugWindow, allStart):
                     l0 = r0 = l1 = r1 = l2 = r2 = l3 = r3 = " "
         else:
             step = stepper.getStep()
+            stepperTime = stepper.getTime()
+            # Text processing
             if step != lastStep:
-                #textLog.append(str(wrappedTextList))
-                for line in wrappedTextList[step]:
+                for line in textToDisplay[step]:
                     if line == "\\n":
                         textLog.append(" ")
                     else:
                         textLog.append(line)
                 autoUp = True
-
-            if step == len(textList)-1 and stepper.getProgressing():
+            if step == len(textToDisplay)-1 and stepper.getProgressing():
                 stepper.pause()
-
+            if step != len(textToDisplay)-1 and not stepper.getProgressing():
+                stepper.resume()
             lastStep = stepper.getStep()
-
             if autoUp:
-                top = max(top,len(textLog)-(screenHeight-lowerlineRY-5))
+                top = max(top,len(textLog)-screenHeight+lowerlineRY+5+textUpOffset)
                 autoUp = False
 
         #Display
         stdscr.erase()
         if paused:
-            if waited: #exit confirm loop
+            if waited: #exit confirm display loop
                 y,x = stdscr.relativeAddtext(0.5, 0.5, "Do you want to save the game before quiting?")
                 stdscr.addstr(y+2,x-5, "{}YES".format(conY))
                 stdscr.addstr(y+2,x+2, "{}NO".format(conN))
-            else: #pause loop
+            else: #pause display loop
                 y,x = stdscr.relativeAddtext(0.3, 0.5, "PAUSED")
                 stdscr.addstr(y+int(screenWidth/10), x-math.ceil(len("{}CONTINUE{}".format(l0, r0))/2), "{}CONTINUE{}".format(l0, r0))
                 stdscr.addstr(y+int(screenWidth/10)+1, x-math.ceil(len("{}  SAVE  {}".format(l1, r1))/2), "{}  SAVE  {}".format(l1, r1))
                 stdscr.addstr(y+int(screenWidth/10)+2, x-math.ceil(len("{}  LOAD  {}".format(l2, r2))/2), "{}  LOAD  {}".format(l2, r2))
                 stdscr.addstr(y+int(screenWidth/10)+3, x-math.ceil(len("{} OPTION {}".format(l3, r3))/2), "{} OPTION {}".format(l3, r3))
                 stdscr.addstr(y+int(screenWidth/10)+4, x-math.ceil(len("{}  QUIT  {}".format(l4, r4))/2), "{}  QUIT  {}".format(l4, r4))
-        else: #normal loop
+        else: #normal display loop
             #screen format
             stdscr.hline(upperlineRY,0,"─",screenWidth)
             stdscr.hline(screenHeight-lowerlineRY,0,"─",screenWidth)
@@ -609,21 +647,37 @@ def intro(stdscr, debugWindow, allStart):
             #text display
             for i in range(top,min(top+screenHeight-lowerlineRY-5,len(textLog))):
                 if type(textLog[i]) == list:
-                    stdscr.addstr(upperlineRY+1+i-top,0,textLog[i][0],textLog[i][1])
+                    stdscr.addstr(upperlineRY+1+i-top, 0, textLog[i][0], textLog[i][1])
                 elif type(textLog[i]) == str:
-                    stdscr.addstr(upperlineRY+1+i-top,0,textLog[i])
+                    stdscr.addstr(upperlineRY+1+i-top, 0, textLog[i])
 
         stdscr.noutrefresh()
 
         if debug:
             if paused:
-                debugWindowUpdate(debugWindow, [holdCh], loopCount/100, stop - allStart, loopLength, actualLoopLength,
-                                  1/max(actualLoopLength,0.000001), averageLoopLength, "PAUSE",
-                                  (step, stepperTime), )
+                debugWindowUpdate(
+                    debugWindow,
+                    "PAUSE",
+                    [holdCh],
+                    loopCount/100,
+                    stop - allStart,
+                    loopLength,
+                    actualLoopLength,
+                    1/max(actualLoopLength,0.000001),
+                    averageLoopLength,
+                    str(step) + " / " + "{:.5}".format(stepperTime),
+                )
             else:
-                debugWindowUpdate(debugWindow, [holdCh], loopCount/100, stop - allStart, loopLength, actualLoopLength,
-                                  1/max(actualLoopLength,0.000001), averageLoopLength, "INTRO",
-                                  (step, stepperTime), )
+                debugWindowUpdate(
+                    debugWindow,
+                    "INTRO",
+                    [holdCh],
+                    stop - allStart,
+                    1/max(actualLoopLength,0.000001),
+                    averageLoopLength,
+                    str(step) + " / " + "{:.5}".format(stepperTime),
+                    top,
+                )
 
         curses.doupdate()
 
@@ -656,6 +710,9 @@ def main(stdscr):
     screenHeight = curses.LINES
     stdscr.setScreenWidth(curses.COLS)
     stdscr.setScreenHeight(curses.LINES)
+    global textUpOffset
+    if textUpOffset == -1:
+        textUpOffset += int((screenHeight-10)*textUpOffsetRatio)
     allStart = time.time()
     gameLoop = True
     saves = []
@@ -690,6 +747,8 @@ def main(stdscr):
 
 if __name__ == "__main__":
     call("clear", shell=True)
+    open('logging.log', 'w').close()
+    logging.basicConfig(format='%(levelname)s:%(message)s', filename='logging.log', level=logging.DEBUG)
     wrapper(main)
     '''
     try:
