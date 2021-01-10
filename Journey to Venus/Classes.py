@@ -366,14 +366,14 @@ class Slider():
     def increase(self, n = 1):
         '''increase the value by n interval'''
         checkValue = self.value + self.interval*n
-        if checkValue > self.max:
+        if checkValue > self.max and self.loop:
             checkValue = self.min - self.interval + (checkValue-self.max)
         self.value = min(self.max, max(self.min, checkValue))
 
     def decrease(self, n =1):
         '''decrease the value by n interval'''
         checkValue = self.value - self.interval*n
-        if checkValue < self.min:
+        if checkValue < self.min and self.loop:
             checkValue = self.max - self.interval + (self.min-checkValue)
         self.value = min(self.max, max(self.min, checkValue))
 
@@ -442,9 +442,9 @@ class Timer():
         return self.progressing
 
 class Person():
-    def __init__(self, name, description, location, isControlling = False):
+    def __init__(self, name, flavor, location, isControlling = False):
         self.name = name
-        self.description = description
+        self.flavor = flavor
         self.recall = {}
 
         self.health = 100

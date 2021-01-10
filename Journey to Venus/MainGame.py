@@ -1,5 +1,5 @@
 # Jittipat Shobbakbun
-# 01/08/2021
+# 01/10/2021
 # MainGame.py
 
 # imports
@@ -55,7 +55,13 @@ commandDict = {
     "MOVE":["MOVE", "GO"]
 }
 
-options = {"Text display speed":1}
+options = {
+    "Back to Main Menu":None,
+    "Text display speed":1,
+    "test option with float":2.5,
+    "test option with boolean":False,
+    "A sligthlyyyyyyy too long optionnnnnnnnnn":2
+}
 
 #screen config
 debugWidth = 30
@@ -64,6 +70,8 @@ textUpOffset = -1 # set to -1 to use textUpOffsetRatio
 textUpOffsetRatio = 0
 upperlineRY = 3
 lowerlineRY = 4
+optionInputLength = 5
+optionLength = 40
 
 #setup the station map
 
@@ -88,20 +96,40 @@ gameState = {
     "story":2,
     "characters":{
         "Alice":Person(
-            "Alice Mirancoff",
-            "She is an acomplished astronomer an the captain of the S.P.E.A.R.",
-             None,
-             True
+            name = "Alice Mirancoff",
+            flavor = "She is an acomplished astronomer an the captain of the S.P.E.A.R.",
+            location = None,
+            isControlling = True
         ),
-        "":None,
-        "":None,
-        "":None,
-        "":None,
-        "":None,
+        "":Person(
+            name = "",
+            flavor = "",
+            location = None
+        ),
+        "":Person(
+            name = "",
+            flavor = "",
+            location = None
+        ),
+        "":Person(
+            name = "",
+            flavor = "",
+            location = None
+        ),
+        "":Person(
+            name = "",
+            flavor = "",
+            location = None
+        ),
+        "":Person(
+            name = "",
+            flavor = "",
+            location = None
+        )
     },
-    "currentCharacterIndex":4,
     "textLog":[],
-    "timer":0, # time in seconds after Jan 1, 2070 1m=60 1h=3600 1d=86400
+    "time":1, # time in seconds after Jan 1, 2070 1m=60 1h=3600 1d=86400
+    "currentMap":None,
     "":None,
 }
 
@@ -190,13 +218,16 @@ def storyInterpreter(list, key):
     seperatedTexts = []
     removedLines = 0
     for string in texts:
-        testList = string.split(" : ")
-        if len(testList) == 2:
-            seperatedTexts.append(testList)
-        elif len(testList) == 1 and testList[0] != "":
-            seperatedTexts.append(testList + [""])
-        elif len(testList) == 1 and testList[0] == "":
-            seperatedTexts.append(["NEWL", "-"])
+        if " : " not in string and len(string) != 0:
+            seperatedTexts.append(["DCPT", string])
+        else:
+            testList = string.split(" : ")
+            if len(testList) == 2:
+                seperatedTexts.append(testList)
+            elif len(testList) == 1 and testList[0] != "":
+                seperatedTexts.append(testList + [""])
+            elif len(testList) == 1 and testList[0] == "":
+                seperatedTexts.append(["NEWL", "-"])
     formattedTextList = []
     addLines = None
     for index, (type, massage) in enumerate(seperatedTexts):
@@ -242,7 +273,7 @@ def str_hardWrap(string, width):
     return retList
 
 def toDate(sec):
-    '''take time in seconds after Jan 1, 2070 and return date in format {Y:, M:, D:, H:, M:, S:}'''
+    '''take time in seconds after Jan 1, 2070 and return date in format {Y:, Mo:, D:, H:, Mi:, S:}'''
     y = sec//(365*60*60*24)+2070
     totalDays = 0
     mo = None
@@ -251,24 +282,22 @@ def toDate(sec):
         if (sec%(365*60*60*24))//(60*60*24) < totalDays:
             mo = month
             break
-    d = (sec%(365*60*60*24))//(60*60*24)-(totalDays-months[mo])
+    d = (sec%(365*60*60*24))//(60*60*24)-(totalDays-months[mo])+1
     h = (sec%(60*60*24))//(60*60)
-    m = (sec%(60*60))//(60)
-    m = sec%(60)
-    return {"Y":y, "Mo":mo, "D":d, "H":h, "Mi":mi, "S":s}
+    mi = (sec%(60*60))//(60)
+    s = sec%(60)//1
+    return {"Y":int(y), "Mo":mo, "D":int(d), "H":int(h), "Mi":int(mi), "S":int(s)}
 
 def modifyTime(sec, Y=0, Mo=0, D=0, H=0, Mi=0, S=0):
     '''add or subtract time in seconds in year, month, etc.'''
     totalDays = 0
-    mo = None
     dayInTheMonth = 0
     for month, days in months.items():
         totalDays += days
         if (sec%(365*60*60*24))//(60*60*24) < totalDays:
-            mo = month
             dayInTheMonth = days
             break
-    sec += (Y*(365*60*60*24)) + (Mo*dayInTheMonth*24*60*60) + (D*24*60*60) + (H*60*60) + (Mi*60) + S
+    sec += ((Y*(365*60*60*24)) + (Mo*dayInTheMonth*24*60*60) + (D*24*60*60) + (H*60*60) + (Mi*60) + S)
     return sec
 
 #Loop Components
@@ -313,10 +342,35 @@ def debugWindowUpdate(debugWindow, *args):
     debugWindow.noutrefresh(0,0, 0,screenWidth-debugWidth,screenHeight,screenWidth)
 
 #Commands
+def multiwordCompare(testList, checkList):
+    '''return true if first list of words is somewhere in the second list'''
+    if type(testList) == str: testList = testList.split()
+    if type(checkList) == str: checkList = checkList.split()
+    lastMatchIndex = -1
+    for testWord in testList:
+        match = False
+        for index, checkWord in enumerate(checkList):
+            if testWord == checkWord:
+                match = True
+                matchIndex = index
+                break
+        if not match:
+            return False
+        else:
+            if lastMatchIndex != 1:
+                if matchIndex - lastMatchIndex != 1:
+                    return False
+        lastMatchIndex = matchIndex
+    return True
+
 def commandHandeler(input):
     words = input.split()
-    if words[0] in commandDict["PAUSE"]:
-        pass
+    command = words[0].upper()
+    objects = words[1:]
+    if words[0] in commandDict["LOOK"]:
+        for object in objects:
+            if object in commandDict["ROOM"]:
+                gameState = gameState["currentMap"].look(gameState)
 
 def pause(stepper, paused, previousSteping):
     if paused:
@@ -335,10 +389,10 @@ def menu(stdscr, debugWindow, hasSave, allStart):
     global debug
     #MenuSetup
     if hasSave:
-        menuSelector = Slider(0,4,1)
+        menuSelector = Slider(0, 4, 1, loop = True)
         loadAttr = curses.A_NORMAL
     else:
-        menuSelector = Slider(0,2,1)
+        menuSelector = Slider(0,2,1, loop = True)
         loadAttr = curses.A_DIM
     #Loop
     loopCount = 0
@@ -475,29 +529,25 @@ def load(stdscr, debugWindow, allStart):
     pass
 
 def option(stdscr, debugWindow, allStart):
-    '''game loop for option screen'''
-    pass
-
-def save(stdscr, debugWindow, allStart):
-    pass
-
-def pOption(stdscr, debugWindow, allStart):
-    pass
-
-def introTreading(commandsBuffer, gameState, textToDisplay):
-    textToDisplay += storyInterpreter(story, "tutorial")
-
-def intro(stdscr, debugWindow, allStart):
-    '''gameLoop for intro'''
+    '''gameLoop for option screen'''
     global debug
+    global options
 
-    #IntroSetup
-    pauseSelector = Slider(0,4,1)
+    #OptionSetup
     blinker = Timer(True, 0.6, True)
-
-    textToDisplay = []
-    textToDisplay += storyInterpreter(story, "tutorial")
-    commandsBuffer = []
+    optionSelector = Slider(0, len(options)-1, 1, startingPoint = 1)
+    isEditing = False
+    commandType = None
+    editedBool = None
+    upOptionList = []
+    currentOptionText = ""
+    downOptionList = []
+    middleScreen = math.floor(screenHeight/2)
+    upperBound = upperlineRY + 3
+    upperSpace = middleScreen - upperBound - 1
+    lowerBound = screenHeight - lowerlineRY - 2
+    lowerSpace = lowerBound - middleScreen - 1
+    warningText = ""
 
     #Loop
     loopCount = 0
@@ -508,6 +558,216 @@ def intro(stdscr, debugWindow, allStart):
     averageLoopLength = 0
     loopLength = 0
     actualLoopLength = 0
+    aall = 0.01 #averageActualLoopLength
+    tall = 0
+    pressList = [-1 for x in range(7)]
+    textBuffer = ""
+
+    introLoop = True
+    while introLoop:
+        #Loop and time
+        start = time.time()
+        if debug:
+            loopLengthList.pop(0)
+            loopLengthList.append(loopLength)
+            if loopLength > maxLoopLength:
+                maxLoopLength = loopLength
+            averageLoopLength = (averageLoopLength*100 + loopLength - loopLengthList[0])/100
+
+        #Character processing
+        holdCh, holdCount, pressList = characterProcessing(stdscr, pressList)
+
+        #Character check
+        if holdCh == keyBinding["EmergencyEscape"]:
+            if "\x1b" in pressList:
+                break
+        if debug:
+            if holdCh == keyBinding["DEBUG"]:
+                debug = False
+        else:
+            if holdCh == keyBinding["DEBUG"]:
+                debug = True
+
+        #command input
+        if holdCh == "\n":
+            if optionSelector.getValue() == 0:
+                return "MENU"
+            if isEditing:
+                if textBuffer != "":
+                    warningText = ""
+                    key = list(options.keys())[optionSelector.getValue()]
+                    if optionType == bool:
+                        options[key] = editedBool
+                    else:
+                        try:
+                            options[key] = optionType(textBuffer)
+                        except:
+                            warningText = "Please input {}".format(optionType.__name__)
+                    if warningText == "":
+                        textBuffer = ""
+                        isEditing = False
+                else:
+                    warningText = ""
+                    isEditing = False
+            else:
+                isEditing = True
+                key = list(options.keys())[optionSelector.getValue()]
+                optionType = type(options[key])
+                if optionType == int or optionType == str or optionType == float:
+                    #textBuffer = str(options[key])
+                    textBuffer = ""
+                elif optionType == bool:
+                    editedBool = options[key]
+        elif holdCh == keyBinding["DELETE"] and isEditing:
+            textBuffer = textBuffer[:len(textBuffer)-1]
+        elif len(str(holdCh)) == 1 and isEditing and len(textBuffer) < optionInputLength and optionType != bool:
+            textBuffer += holdCh
+        #AdditionalShortcutKeys
+        if isEditing and optionType == bool:
+            if holdCh == keyBinding["LEFT"] or holdCh == keyBinding["RIGHT"]:
+                editedBool = not editedBool
+        if not isEditing:
+            if holdCh == keyBinding["DOWN"]:
+                optionSelector.increase()
+            if holdCh == keyBinding["UP"]:
+                optionSelector.decrease()
+
+        #Logic
+        # Text processing
+        name = str(list(options.keys())[optionSelector.getValue()])
+        value = str(options[name])
+        if name == "Back to Main Menu":
+            currentOptionText = "[          Back to Main Menu           ]"
+        else:
+            currentOptionText = "[ " + name + " " + " "*(optionLength-len(name)-len(value)-7) + "[" + value + "]" + " ]"
+        if optionSelector.getValue() != 0:
+            upOptionList = []
+            for index, (name, value) in enumerate(options.items()):
+                name = str(name)
+                value = str(value)
+                if index < optionSelector.getValue():
+                    if name == "Back to Main Menu":
+                        upOptionList.append("[          Back to Main Menu           ]")
+                    else:
+                        upOptionList.append("[ " + name + " " + " "*(optionLength-len(name)-len(value)-7) + "[" + value + "]" + " ]")
+        else:
+            upOptionList = []
+        if optionSelector.getValue() != len(options)-1:
+            downOptionList = []
+            for index, (name, value) in enumerate(options.items()):
+                name = str(name)
+                value = str(value)
+                if index > optionSelector.getValue():
+                    downOptionList.append("[ " + name + " " + " "*(optionLength-len(name)-len(value)-7) + "[" + value + "]" + " ]")
+        else:
+            downOptionList = []
+        if isEditing:
+            name = str(list(options.keys())[optionSelector.getValue()])
+            if optionType == bool:
+                currentOptionText = "[ " + name + " " + " "*(optionLength-len(name)-len(str(editedBool))-9) + "◄[" + str(editedBool) + "]►" + " ]"
+            else:
+                if blinker.getStep()%2 == 0:
+                    textWithCursor = textBuffer + "_"
+                else:
+                    textWithCursor = textBuffer + " "
+                inputSlot = str(textWithCursor)[:5] + " "*max(0, 5 - len(textWithCursor))
+                currentOptionText = "[ " + name + " " + " "*(optionLength-len(name)-len(inputSlot)-7) + "[" + inputSlot + "]" + " ]"
+
+        #Display
+        stdscr.erase()
+        #screen format
+        dates = toDate(gameState["time"]).values()
+        stdscr.addstr(1, math.floor(screenWidth*0.5)-3, "OPTIONS")
+        stdscr.hline(upperlineRY,0,"─",screenWidth)
+        stdscr.hline(screenHeight-lowerlineRY,0,"─",screenWidth)
+        #text display
+        leftOffset = math.floor((screenWidth-optionLength)/2)
+        if upperSpace > 0 and len(upOptionList) > 0:
+            for i in range(min(upperSpace, len(upOptionList))):
+                stdscr.addstr(i + max(upperBound, middleScreen-1-len(upOptionList)), leftOffset, upOptionList[i])
+
+        if isEditing:
+            stdscr.addstr(middleScreen, leftOffset - 2,"> " + currentOptionText + " <")
+            if warningText != "":
+                stdscr.addstr(middleScreen + 1, math.floor((screenWidth-len(warningText))/2), warningText, curses.A_DIM)
+        else:
+            if optionSelector.getValue() != 0:
+                stdscr.addstr(middleScreen - 1, math.floor(screenWidth/2), "▲")
+            stdscr.addstr(middleScreen, leftOffset, currentOptionText)
+            if optionSelector.getValue() != len(options)-1:
+                stdscr.addstr(middleScreen + 1, math.floor(screenWidth/2), "▼")
+
+        if lowerSpace > 0  and len(downOptionList) > 0:
+            for i in range(min(lowerSpace, len(downOptionList))):
+                stdscr.addstr(i + middleScreen + 2, leftOffset, downOptionList[i])
+
+        stdscr.noutrefresh()
+
+        if debug:
+            debugWindowUpdate(
+                debugWindow,
+                "OPTION",
+                [holdCh],
+                #loopCount/100,
+                stop - allStart,
+                #loopLength,
+                #actualLoopLength,
+                1/max(actualLoopLength,0.000001),
+                averageLoopLength,
+                optionSelector.getValue(),
+                lowerBound,
+            )
+
+        curses.doupdate()
+
+        #Loop and time
+        loopCount += 1
+        stop = time.time()
+        loopLength = stop-start
+        time.sleep(0.01)
+        actualStop = time.time()
+        actualLoopLength = actualStop-start
+        tall += actualLoopLength
+        aall = tall/loopCount
+
+def save(stdscr, debugWindow, allStart):
+    pass
+
+def pOption(stdscr, debugWindow, allStart):
+    pass
+
+def introTreading(commandsBuffer, textToDisplay):
+    gameState["currentMap"] = gameState["map"]["testSpace"]
+    textToDisplay += storyInterpreter(story, "tutorial")
+    time.sleep(15)
+    textToDisplay += storyInterpreter(story, "test1")
+
+def intro(stdscr, debugWindow, allStart):
+    '''gameLoop for intro'''
+    global debug
+
+    #IntroSetup
+    pauseSelector = Slider(0, 4, 1, loop = True)
+    blinker = Timer(True, 0.6, True)
+
+    textToDisplay = []
+    commandsBuffer = []
+
+    #run threading
+    x = threading.Thread(target=introTreading, args=(commandsBuffer, textToDisplay), daemon=True)
+    x.start()
+
+    #Loop
+    loopCount = 0
+    start = 0
+    stop = 0
+    maxLoopLength = 0
+    loopLengthList = [0 for x in range(100)]
+    averageLoopLength = 0
+    loopLength = 0
+    actualLoopLength = 0
+    aall = 0.01 #averageActualLoopLength
+    tall = 0
     pressList = [-1 for x in range(7)]
 
     #introLoop
@@ -528,7 +788,9 @@ def intro(stdscr, debugWindow, allStart):
     textBuffer = ""
 
     introLoop = True
+    gameState["time"] = modifyTime(gameState["time"], D=30)
     while introLoop:
+        gameState["time"] = modifyTime(gameState["time"], S=0.01)
         #Loop and time
         start = time.time()
         if debug:
@@ -560,10 +822,9 @@ def intro(stdscr, debugWindow, allStart):
                     waitSelector.increase()
                 if holdCh == "\n":
                     if waitSelector.getValue() == 0:
-                        #savefile <------------------------------------
-                        return "MAIN"
+                        return "pSAVE"
                     elif waitSelector.getValue() == 1:
-                        return "MAIN"
+                        return "MENU"
             else: #pause loop
                 if holdCh == keyBinding["UP"]:
                     pauseSelector.decrease()
@@ -680,6 +941,9 @@ def intro(stdscr, debugWindow, allStart):
                 stdscr.addstr(y+int(screenWidth/10)+4, x-math.ceil(len("{}  QUIT  {}".format(l4, r4))/2), "{}  QUIT  {}".format(l4, r4))
         else: #normal display loop
             #screen format
+            dates = toDate(gameState["time"]).values()
+            stdscr.addstr(0,0,"{1} {2}, {0} {3}:{4}:{5}".format(*dates))
+            stdscr.addstr(1,0,"Location: {}".format(gameState["currentMap"].getName()))
             stdscr.hline(upperlineRY,0,"─",screenWidth)
             stdscr.hline(screenHeight-lowerlineRY,0,"─",screenWidth)
             #terminal
@@ -726,7 +990,8 @@ def intro(stdscr, debugWindow, allStart):
                     [holdCh],
                     stop - allStart,
                     1/max(actualLoopLength,0.000001),
-                    averageLoopLength,
+                    actualLoopLength,
+                    aall,
                     str(step) + " / " + "{:.5}".format(stepperTime),
                     top,
                 )
@@ -740,6 +1005,8 @@ def intro(stdscr, debugWindow, allStart):
         time.sleep(0.01)
         actualStop = time.time()
         actualLoopLength = actualStop-start
+        tall += actualLoopLength
+        aall = tall/loopCount
 
 #Code
 def main(stdscr):
@@ -767,18 +1034,17 @@ def main(stdscr):
         textUpOffset += int((screenHeight-10)*textUpOffsetRatio)
     allStart = time.time()
     gameLoop = True
-    saves = []
+    saves = {}
     try:
         savefileNames = os.listdir("saves")
         if len(savefileNames) == 0:
             hasSave = False
         else:
             hasSave = True
-            saves = [None for x in range(len(savefileNames))]
-            for name in savefileNames:
+            for fileName in savefileNames:
                 with open("saves/" + str(name), "rb") as file:
                     save = pickle.load(file)
-                saves[save["index"]] = save
+                saves[name[:-2]] = save
     except:
         pass
         hasSave = False
@@ -790,6 +1056,8 @@ def main(stdscr):
     while gameLoop:
         if currentLoop == "MENU":
             currentLoop = menu(stdscr, debugWindow, hasSave, allStart)
+        elif currentLoop == "OPTION":
+            currentLoop = option(stdscr, debugWindow, allStart)
         elif currentLoop == "INTRO":
             currentLoop = intro(stdscr, debugWindow, allStart)
         elif currentLoop == "END":
