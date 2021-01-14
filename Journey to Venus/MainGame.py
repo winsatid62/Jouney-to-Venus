@@ -21,6 +21,17 @@ textSpeed = 1
 screenWidth = 0
 screenHeight = 0
 
+#screen config
+debugWidth = 30
+debugHeight = 20
+textUpOffset = -1 # set to -1 to use textUpOffsetRatio
+textUpOffsetRatio = 0
+upperlineRY = 3
+lowerlineRY = 4
+optionInputLength = 5
+optionLength = 40
+
+# settings
 months = {
     "January":31,
     "Febuary":28,
@@ -51,8 +62,11 @@ keyBinding = {
 
 commandDict = {
     "PAUSE":["PAUSE", "STOP", "P"],
-    "LOOK":["LOOK"],
-    "MOVE":["MOVE", "GO"]
+    "LOOK":["LOOK", "LOOK AT"],
+    "GO":["MOVE", "GO", "GO TO", "GO THROUGH", "WALK TO", "RUN TO", "WALK", "RUN"],
+    "ROOM":["ROOM", "AROUND", "THE ROOM"],
+    "TTP":["TTP"],
+    "DEBUG":["DEBUG"],
 }
 
 options = {
@@ -63,38 +77,70 @@ options = {
     "A sligthlyyyyyyy too long optionnnnnnnnnn":2
 }
 
-#screen config
-debugWidth = 30
-debugHeight = 20
-textUpOffset = -1 # set to -1 to use textUpOffsetRatio
-textUpOffsetRatio = 0
-upperlineRY = 3
-lowerlineRY = 4
-optionInputLength = 5
-optionLength = 40
+gameState = {}
 
-#setup the station map
+def setupDefaultGameState():
+    '''sets up the default (in case of no save file) gameState'''
+    #setup the station map
 
-#setup Map
+    #setup Map
 
+    #setup default gameState
 
-#setup default gameState
-gameState = {
-    "map":{
+    # generating rooms
+    map = {
         "room4012":MapNode(
             name = "Room 4012",
             flavor = "This is where you are staying. It is similar to normal hotel rooms found on earth.",
-            flavor2 = "It shaped like an L. The walls are blue with white accents, and the room is basked in a warm orange tinted light."
+            flavor2 = "It shaped like an L. The walls are blue with white accents, and the room is basked in a warm orange tinted light.",
+            firstImpression = "You woke up again. But this time, it is in your room on the Lance. A similar room that you recognize."
         ),
         "testSpace":MapNode(
             name = "White void",
-            flavor = "It is all white. You see nothing but white. There is no horizon line, no sky, no ground. There is nothing but white. ",
+            flavor = "The room is all white. You see nothing but white. There is no horizon line, no sky, no ground. There is nothing but white.",
             flavor2 = "There is no shadow, no shade, no perspective. You feel like standing on a normal ground, but you cannot distinguish where the ground start or where the sky end. You can still feel yourself, so that mean can see yourself. You just unable to distinguish it from anything else. It is all white.",
             firstImpression = "You woke up and all you see is white. You looked around and all you see is white. You can't even see yourself."
         ),
-    },
-    "story":2,
-    "characters":{
+    }
+
+    # Detailing rooms / add doors
+    doors = {
+        "testSpace-Room4012":Door(
+            name = "Black portal",
+            flavor = "It is a black hole.",
+            flavor2 = "You look closer and see no shade or other sign that it reflect ligth. You also feel sligth suction, but it is resitable",
+            roomIn = map["testSpace"],
+            roomOut = map["room4012"],
+            locationIn = "a BLACK PORTAL flaoting above you",
+            locationOut = "no sign of the hole you just went through"
+        )
+    }
+
+    # Generating objects $ populating rooms with objects
+    objects = {
+        #room4012
+        "waterBottle":Object(
+            name = "Water bottle",
+            flavor = "It is an ordinary bottle from some 3D printer.",
+            flavor2 = "",
+            location = "a WATER BOTTLE flaoting in front of you",
+            room = map["testSpace"],
+            hasResource = True,
+            getable = True
+        ),
+        "pencil0":Object(
+            name = "Pencil",
+            flavor = "It is very short pencil. You cannot help but wonder who used it to this length instead of recycling for a new one.",
+            flavor2 = "",
+            location = "a PENCIL on the 'floor'",
+            room = map["testSpace"],
+            hasResource = True,
+            getable = True
+        )
+    }
+
+    # generating characters
+    characters = {
         "Alice":Person(
             name = "Alice Mirancoff",
             flavor = "She is an acomplished astronomer an the captain of the S.P.E.A.R.",
@@ -126,12 +172,40 @@ gameState = {
             flavor = "",
             location = None
         )
-    },
-    "textLog":[],
-    "time":1, # time in seconds after Jan 1, 2070 1m=60 1h=3600 1d=86400
-    "currentMap":None,
-    "":None,
-}
+    }
+
+    # Creating story conditions
+    story = {
+        "intro":Story(
+            name = "intro",
+            key = "intro",
+            requirements = [
+                [], # first (index = 0) requirement is to get from state -1 to state 0
+                [lambda tempState : tempState["lastCommand"][0] == "LOOK"], # second and other (index = 1 to len(requirement)-1) requirement is to get from state index-1 to state index
+                [lambda tempState : tempState["lastCommand"][0] == "LOOKOBJ"],
+                [lambda tempState : tempState["lastCommand"][0] == "GODOOR"],
+                [] # last requirement is to complete the current story and link the next one
+            ],
+        ),
+    }
+
+    story["intro"].setLink(story["firstTraining"])
+
+    # Combining a gameState
+    defaultGameState = {
+        "map":map,
+        "currentMap":map["testSpace"],
+        "objects":objects,
+        "doors":doors,
+        "characters":characters,
+        "story":story,
+        "activeStory":[],
+        "time":1, # time in seconds after Jan 1, 2070 1m=60 1h=3600 1d=86400
+        "top":0,
+        "lastCommand":["UNKNOW",None],
+        "textLog":[],
+    }
+    return defaultGameState
 
 #Functions
 def wrapper(func, *args, **kwds):
@@ -210,14 +284,11 @@ def str_wrap(string, width):
             break
     return retList
 
-def storyInterpreter(list, key):
-    '''gets lines from "story.txt" with coresponding key and format them'''
-    start = list.index("[" + key + "-")
-    end = list.index("-" + key + "]")
-    texts = [list[i] for i in range(start+1,end)]
+def storyInterpreter(list):
+    '''gets lines from list and format them'''
     seperatedTexts = []
     removedLines = 0
-    for string in texts:
+    for string in list:
         if " : " not in string and len(string) != 0:
             seperatedTexts.append(["DCPT", string])
         else:
@@ -261,7 +332,12 @@ def storyInterpreter(list, key):
             addLines = None
         else:
             formattedTextList.append(formattedMassageList)
-    return formattedTextList
+    #return formattedTextList
+    # additional option
+    reformattedTextList = []
+    for thing in formattedTextList:
+        reformattedTextList += thing
+    return reformattedTextList
 
 def str_hardWrap(string, width):
     '''return a list of lines of text confined to width (not cutting words)'''
@@ -299,6 +375,135 @@ def modifyTime(sec, Y=0, Mo=0, D=0, H=0, Mi=0, S=0):
             break
     sec += ((Y*(365*60*60*24)) + (Mo*dayInTheMonth*24*60*60) + (D*24*60*60) + (H*60*60) + (Mi*60) + S)
     return sec
+
+def storyCheck(tempState, textToDisplay):
+    '''use the story and the key with additional formatting'''
+    for story in tempState["activeStory"]:
+        tempState, textToDisplay = story.checkReqs(tempState, textToDisplay)
+    return tempState, textToDisplay
+
+#Commands
+def multiwordCompare(testList, checkList):
+    '''return true if first list of words is somewhere in the second list'''
+    if type(testList) == str: testList = testList.split()
+    if type(checkList) == str: checkList = checkList.split()
+    lastMatchIndex = -1
+    for checkWord in checkList:
+        match = False
+        for index, testWord in enumerate(testList):
+            if testWord == checkWord:
+                match = True
+                matchIndex = index
+                break
+        if not match:
+            return False
+        else:
+            if lastMatchIndex != -1:
+                if matchIndex - lastMatchIndex != 1:
+                    return False
+        lastMatchIndex = matchIndex
+    return True
+
+def multiwordIsIn(testList, checkList, mustFirst = False, requestIndex = False):
+    '''return true if first list of words is somewhere in the second list'''
+    for checkPhrase in checkList:
+        lastMatchIndex = -1
+        if type(checkPhrase) == str: checkPhrase = checkPhrase.split()
+        for checkWord in checkPhrase:
+            match = False
+            for index, testWord in enumerate(testList):
+                if mustFirst and index > 0 and not match:
+                    break
+                if testWord == checkWord:
+                    match = True
+                    matchIndex = index
+                    break
+            if not match:
+                break
+            else:
+                if lastMatchIndex != -1:
+                    if matchIndex - lastMatchIndex != 1:
+                        match = False
+                        break
+            lastMatchIndex = matchIndex
+        if match == True:
+            if requestIndex:
+                return True, len(checkPhrase)
+            else:
+                return True
+    if requestIndex:
+        return False, -1
+    else:
+        return False
+
+def commandHandeler(input, tempState, textToDisplay):
+    words = input.upper().split()
+    index = -1
+    command = ""
+    for key, commandList in commandDict.items():
+        isMatch, index = multiwordIsIn(words, commandList, True, True)
+        if isMatch:
+            command = key
+            break
+        else:
+            command = "UNKNOWN"
+    objects = words[index:]
+    retCommand = command
+    retObject = None
+    if command == "LOOK":
+        if len(objects) == 0:
+            retObject = tempState["currentMap"]
+            tempState, textToDisplay = tempState["currentMap"].look(tempState, textToDisplay)
+        elif multiwordIsIn(objects, commandDict["ROOM"]):
+            retObject = tempState["currentMap"]
+            tempState, textToDisplay = tempState["currentMap"].look(tempState, textToDisplay)
+        else:
+            for object in tempState["currentMap"].getObjects():
+                if multiwordCompare(objects, object.getName().upper()):
+                    retCommand = "LOOKOBJ"
+                    retObject = object
+                    tempState, textToDisplay = object.look(tempState, textToDisplay)
+                    break
+            else:
+                textToDisplay.append("FDBK : Cannot find what you are looking for.")
+    elif command == "GO":
+        for door in tempState["currentMap"].getDoors():
+            if multiwordCompare(objects, door.getName().upper()):
+                retCommand = "GODOOR"
+                retObject = door
+                tempState, textToDisplay = door.go(tempState, textToDisplay)
+                break
+        else:
+            textToDisplay.append("FDBK : Cannot find where you want to go to.")
+    elif command == "TTP":
+        textToDisplay.append(str(textToDisplay))
+    elif command == "DEBUG" and debug:
+        textToDisplay.append(str(tempState))
+    else:
+        textToDisplay.append("FDBK : Command not recognized")
+    tempState["lastCommand"] = [retCommand, retObject]
+    return tempState, textToDisplay
+
+def commandCheck(input, commandList, objectList):
+    '''check whether the input match the commandList and objectList'''
+    words = input.upper().split()
+    index = -1
+    command = ""
+    isCommandMatch, index = multiwordIsIn(words, commandList, True, True)
+    objects = words[index:]
+    isObjectMatch = multiwordIsIn(objects, objectList)
+    return isComplete and isObjectMatch
+
+def pause(stepper, paused, previousSteping):
+    if paused:
+        paused = False
+        if previousSteping == True:
+            stepper.resume()
+    else:
+        paused = True
+        previousSteping = stepper.getProgressing()
+        stepper.pause()
+    return paused, previousSteping
 
 #Loop Components
 def characterProcessing(my_stdscr, pressList = [-1 for x in range(7)]):
@@ -341,52 +546,12 @@ def debugWindowUpdate(debugWindow, *args):
             debugWindow.addstr(index, (debugWidth-len("{}".format(str(arg)))), "{}".format(str(arg)))
     debugWindow.noutrefresh(0,0, 0,screenWidth-debugWidth,screenHeight,screenWidth)
 
-#Commands
-def multiwordCompare(testList, checkList):
-    '''return true if first list of words is somewhere in the second list'''
-    if type(testList) == str: testList = testList.split()
-    if type(checkList) == str: checkList = checkList.split()
-    lastMatchIndex = -1
-    for testWord in testList:
-        match = False
-        for index, checkWord in enumerate(checkList):
-            if testWord == checkWord:
-                match = True
-                matchIndex = index
-                break
-        if not match:
-            return False
-        else:
-            if lastMatchIndex != 1:
-                if matchIndex - lastMatchIndex != 1:
-                    return False
-        lastMatchIndex = matchIndex
-    return True
-
-def commandHandeler(input):
-    words = input.split()
-    command = words[0].upper()
-    objects = words[1:]
-    if words[0] in commandDict["LOOK"]:
-        for object in objects:
-            if object in commandDict["ROOM"]:
-                gameState = gameState["currentMap"].look(gameState)
-
-def pause(stepper, paused, previousSteping):
-    if paused:
-        paused = False
-        if previousSteping == True:
-            stepper.resume()
-    else:
-        paused = True
-        previousSteping = stepper.getProgressing()
-        stepper.pause()
-    return paused, previousSteping
-
 #Loops
 def menu(stdscr, debugWindow, hasSave, allStart):
     '''game loop for menu screen'''
     global debug
+    global gameState
+
     #MenuSetup
     if hasSave:
         menuSelector = Slider(0, 4, 1, loop = True)
@@ -441,7 +606,8 @@ def menu(stdscr, debugWindow, hasSave, allStart):
                 if menuSelector.getValue() == 0:
                     pass #NEED WORKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
                 elif menuSelector.getValue() == 1:
-                    return "INTRO"
+                    gameState = defaultGameState
+                    return "MAIN"
                 elif menuSelector.getValue() == 2:
                     return "LOAD"
                 elif menuSelector.getValue() == 3:
@@ -451,7 +617,8 @@ def menu(stdscr, debugWindow, hasSave, allStart):
                     return "END"
             else:
                 if menuSelector.getValue() == 0:
-                    return "INTRO"
+                    gameState = defaultGameState
+                    return "MAIN"
                 elif menuSelector.getValue() == 1:
                     return "OPTION"
                 elif menuSelector.getValue() == 2:
@@ -736,15 +903,10 @@ def save(stdscr, debugWindow, allStart):
 def pOption(stdscr, debugWindow, allStart):
     pass
 
-def introTreading(commandsBuffer, textToDisplay):
-    gameState["currentMap"] = gameState["map"]["testSpace"]
-    textToDisplay += storyInterpreter(story, "tutorial")
-    time.sleep(15)
-    textToDisplay += storyInterpreter(story, "test1")
-
-def intro(stdscr, debugWindow, allStart):
-    '''gameLoop for intro'''
+def mainLoop(stdscr, debugWindow, allStart, gameState):
+    '''main gameLoop'''
     global debug
+    tempState = dict(gameState)
 
     #IntroSetup
     pauseSelector = Slider(0, 4, 1, loop = True)
@@ -753,9 +915,9 @@ def intro(stdscr, debugWindow, allStart):
     textToDisplay = []
     commandsBuffer = []
 
-    #run threading
-    x = threading.Thread(target=introTreading, args=(commandsBuffer, textToDisplay), daemon=True)
-    x.start()
+    #Story Loop
+    tempState["currentMap"] = tempState["map"]["testSpace"]
+    tempState["story"]["intro"].setActive(tempState)
 
     #Loop
     loopCount = 0
@@ -775,22 +937,19 @@ def intro(stdscr, debugWindow, allStart):
     paused = False
     waited = False
 
-    textLog = []
-    top = max(0,len(textLog)-1)
+    textLog = tempState["textLog"]
     lineCount = 0
     autoUp = False
 
     step = 0
-    lastStep = -1
+    lastStep = 0
     stepper = Timer(True, textDelay, True)
     previousSteping = True
 
     textBuffer = ""
 
-    introLoop = True
-    gameState["time"] = modifyTime(gameState["time"], D=30)
-    while introLoop:
-        gameState["time"] = modifyTime(gameState["time"], S=0.01)
+    isLoop = True
+    while isLoop:
         #Loop and time
         start = time.time()
         if debug:
@@ -844,6 +1003,7 @@ def intro(stdscr, debugWindow, allStart):
                     elif pauseSelector.getValue() == 4:
                         waitSelector = Slider(0,1,1)
                         if saved: #<----------------------------------Compare current state to last saved state?
+                            gameState = dict(tempState)
                             return "MAIN"
                         else:
                             waited = True
@@ -858,22 +1018,23 @@ def intro(stdscr, debugWindow, allStart):
                         textLog += [["Paused", curses.A_DIM]]
                     else:
                         commandsBuffer.append(inputUpper)
-                        commandHandeler(inputUpper)
+                        commandHandeler(inputUpper, tempState, textToDisplay)
                         saved = False
                     autoUp = True
                     textBuffer = ""
             elif holdCh == keyBinding["DELETE"]:
                 textBuffer = textBuffer[:len(textBuffer)-1]
+            #add character to the buffer
             elif len(str(holdCh)) == 1:
                 textBuffer += holdCh
             #AdditionalShortcutKeys
             if holdCh == keyBinding["TEXTUP"]:
-                if top > 0:
-                    top -= 1
+                if tempState["top"] > 0:
+                    tempState["top"] -= 1
                     autoUp = False
             if holdCh == keyBinding["TEXTDOWN"]:
-                if top < len(textLog)-1:
-                    top += 1
+                if tempState["top"] < len(textLog)-1:
+                    tempState["top"] += 1
                     autoUp = False
 
         #Logic
@@ -908,22 +1069,33 @@ def intro(stdscr, debugWindow, allStart):
                     l0 = r0 = l1 = r1 = l2 = r2 = l3 = r3 = " "
         else:
             # Text processing
+            if len(textToDisplay) > 0:
+                textLog += storyInterpreter(textToDisplay)
+                textToDisplay = []
+                autoUp = True
+            '''
             step = stepper.getStep()
             stepperTime = stepper.getTime()
+            if step != max(0, len(textToDisplay)-1) and not stepper.getProgressing():
+                stepper.resume()
+            if step == max(0, len(textToDisplay)-1) and stepper.getProgressing():
+                stepper.pause()
+
             if step != lastStep:
                 saved = False
-                for line in textToDisplay[step]:
+                textToDisplay2 = storyInterpreter(textToDisplay)
+                for line in textToDisplay2[step]:
                     textLog.append(line)
                 autoUp = True
-            if step == len(textToDisplay)-1 and stepper.getProgressing():
-                stepper.pause()
-            if step != len(textToDisplay)-1 and not stepper.getProgressing():
-                stepper.resume()
             lastStep = stepper.getStep()
+            '''
 
             if autoUp:
-                top = max(top,len(textLog)-screenHeight+lowerlineRY+5+textUpOffset)
+                tempState["top"] = max(tempState["top"],len(textLog)-screenHeight+lowerlineRY+5+textUpOffset)
                 autoUp = False
+
+        # Check active stories' requirement
+        tempState, textToDisplay = storyCheck(tempState, textToDisplay)
 
         #Display
         stdscr.erase()
@@ -941,9 +1113,9 @@ def intro(stdscr, debugWindow, allStart):
                 stdscr.addstr(y+int(screenWidth/10)+4, x-math.ceil(len("{}  QUIT  {}".format(l4, r4))/2), "{}  QUIT  {}".format(l4, r4))
         else: #normal display loop
             #screen format
-            dates = toDate(gameState["time"]).values()
+            dates = toDate(tempState["time"]).values()
             stdscr.addstr(0,0,"{1} {2}, {0} {3}:{4}:{5}".format(*dates))
-            stdscr.addstr(1,0,"Location: {}".format(gameState["currentMap"].getName()))
+            stdscr.addstr(1,0,"Location: {}".format(tempState["currentMap"].getName()))
             stdscr.hline(upperlineRY,0,"─",screenWidth)
             stdscr.hline(screenHeight-lowerlineRY,0,"─",screenWidth)
             #terminal
@@ -961,11 +1133,11 @@ def intro(stdscr, debugWindow, allStart):
                 for i in range(1,len(terminalText)):
                     stdscr.addstr(screenHeight-lowerlineRY+1+i, 0, "  {}".format(terminalText[i]))
             #text display
-            for i in range(top,min(top+screenHeight-lowerlineRY-upperlineRY-1,len(textLog))):
+            for i in range(tempState["top"],min(tempState["top"]+screenHeight-lowerlineRY-upperlineRY-1,len(textLog))):
                 if type(textLog[i]) == list:
-                    stdscr.addstr(upperlineRY+1+i-top, 0, textLog[i][0], textLog[i][1])
+                    stdscr.addstr(upperlineRY+1+i-tempState["top"], 0, textLog[i][0], textLog[i][1])
                 elif type(textLog[i]) == str:
-                    stdscr.addstr(upperlineRY+1+i-top, 0, textLog[i])
+                    stdscr.addstr(upperlineRY+1+i-tempState["top"], 0, textLog[i])
 
         stdscr.noutrefresh()
 
@@ -986,14 +1158,15 @@ def intro(stdscr, debugWindow, allStart):
             else:
                 debugWindowUpdate(
                     debugWindow,
-                    "INTRO",
+                    "MAIN",
                     [holdCh],
                     stop - allStart,
                     1/max(actualLoopLength,0.000001),
-                    actualLoopLength,
+                    #actualLoopLength,
                     aall,
-                    str(step) + " / " + "{:.5}".format(stepperTime),
-                    top,
+                    #str(step) + " / " + "{:.5}".format(stepperTime),
+                    tempState["top"],
+                    str(tempState["activeStory"]),
                 )
 
         curses.doupdate()
@@ -1014,6 +1187,7 @@ def main(stdscr):
     global debug
     global screenWidth
     global screenHeight
+    global gameState
 
     curses.curs_set(False)
     stdscr.nodelay(True)
@@ -1029,16 +1203,22 @@ def main(stdscr):
     screenHeight = curses.LINES
     stdscr.setScreenWidth(curses.COLS)
     stdscr.setScreenHeight(curses.LINES)
+
     global textUpOffset
     if textUpOffset == -1:
         textUpOffset += int((screenHeight-10)*textUpOffsetRatio)
     allStart = time.time()
+
+    for stor in defaultGameState["story"].values():
+        stor.setText(story)
+
     gameLoop = True
     saves = {}
     try:
         savefileNames = os.listdir("saves")
         if len(savefileNames) == 0:
             hasSave = False
+            gameState = setupDefaultGameState()
         else:
             hasSave = True
             for fileName in savefileNames:
@@ -1046,8 +1226,8 @@ def main(stdscr):
                     save = pickle.load(file)
                 saves[name[:-2]] = save
     except:
-        pass
         hasSave = False
+        gameState = setupDefaultGameState()
 
     #TEMPORARY VARIABLES <------------------------ (REMOVE BEFORE USE)
     debug = True
@@ -1058,8 +1238,8 @@ def main(stdscr):
             currentLoop = menu(stdscr, debugWindow, hasSave, allStart)
         elif currentLoop == "OPTION":
             currentLoop = option(stdscr, debugWindow, allStart)
-        elif currentLoop == "INTRO":
-            currentLoop = intro(stdscr, debugWindow, allStart)
+        elif currentLoop == "MAIN":
+            currentLoop = mainLoop(stdscr, debugWindow, allStart, gameState)
         elif currentLoop == "END":
             break
         else:

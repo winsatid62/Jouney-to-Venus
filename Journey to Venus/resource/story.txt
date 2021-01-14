@@ -15,27 +15,32 @@ List of types: THOG - Thought of the current character.
                DCPT - Descriptions for objects, world, or story. (No speaker)
                FDBK - Game's feedback and not a part of the story. (DIM(grey) texts)
                NEWL - New line
+               SEPT - Separate each section in story node
+               CMDO - Command out
 
 If the left side doesn't fall into any TYPE listed here, it will be considered a NAME
 -formatExplanations]
 
-[tutorial-
-You  : Yawn....
-You  : What time is it?
-You  : Oh no! It's already half over nine!!
+[intro-
+You  : What...?
+You  : Where am I?
 
-THOG : I have a meeting is at 9:30 AM! I hope I didn't miss much.
+FDBK : You can type LOOK (case independent) to look around the current room you are in.
 
-DCPT : You are on your bed in the bunk room with five other beds. One of them is empty and the other four beds sat people wearing PGs.
+SEPT : 1
 
+FDBK : You can also use LOOK with any object to gain more detail about them.
+FDBK : Example command: look pencil
 
+SEPT : 2
 
-FDBK : Tip: You can use command LOOK to look around the room.
-FDBK : Tip: You can also use LOOK with each object. (E.G. LOOK LUGGAGE)
-FDBK : Tip: You can use MOVE to go to doors or objects. (E.G. MOVE FRONT DOOR) and moving to doors will go to the room beyond that door.
-FDBK : Tip: You can INSPECT some object for more detail.
-Lacroff : I wonder if I add more text, will the program deal with it correctly. This longggggggg string of text is just to test wrapping and spacing of the text.
--tutorial]
+FDBK : You can go to another room through doors by using the command GO or GO TO with a door (in this case, a BLACK PORTAL).
+
+SEPT : 3
+
+FDBK : When you went into new room for the first time, it will automatically look around the room for you.
+
+-intro]
 
 [test1-
 This is a description, right?

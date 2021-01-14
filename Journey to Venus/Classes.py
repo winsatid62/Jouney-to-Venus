@@ -1,10 +1,46 @@
 # Jittipat Shobbakbun
-# 01/08/2021
+# 01/11/2021
 # Classes.py
 
 import time
 import curses
 import math
+import logging
+
+def getStoryText(list, key):
+    '''gets lines from "story.txt" with coresponding key'''
+    start = list.index("[" + key + "-")
+    end = list.index("-" + key + "]")
+    texts = [list[i] for i in range(start+1,end)]
+    return texts
+
+def toDate(sec):
+    '''take time in seconds after Jan 1, 2070 and return date in format {Y:, Mo:, D:, H:, Mi:, S:}'''
+    y = sec//(365*60*60*24)+2070
+    totalDays = 0
+    mo = None
+    for month, days in months.items():
+        totalDays += days
+        if (sec%(365*60*60*24))//(60*60*24) < totalDays:
+            mo = month
+            break
+    d = (sec%(365*60*60*24))//(60*60*24)-(totalDays-months[mo])+1
+    h = (sec%(60*60*24))//(60*60)
+    mi = (sec%(60*60))//(60)
+    s = sec%(60)//1
+    return {"Y":int(y), "Mo":mo, "D":int(d), "H":int(h), "Mi":int(mi), "S":int(s)}
+
+def modifyTime(sec, Y=0, Mo=0, D=0, H=0, Mi=0, S=0):
+    '''add or subtract time in seconds in year, month, etc.'''
+    totalDays = 0
+    dayInTheMonth = 0
+    for month, days in months.items():
+        totalDays += days
+        if (sec%(365*60*60*24))//(60*60*24) < totalDays:
+            dayInTheMonth = days
+            break
+    sec += ((Y*(365*60*60*24)) + (Mo*dayInTheMonth*24*60*60) + (D*24*60*60) + (H*60*60) + (Mi*60) + S)
+    return sec
 
 class my_stdscr:
     '''my own class for display'''
@@ -98,6 +134,8 @@ class MapNode(Thing):
     def __init__(self, name, flavor, flavor2, firstImpression = None):
         super().__init__(name, flavor, flavor2)
         self.objectList = []
+        self.doorInList = []
+        self.doorOutList = []
         self.firstImpression = firstImpression
         self.explored = False
 
@@ -105,6 +143,18 @@ class MapNode(Thing):
         '''add multiple objects to the node'''
         for object in args:
             self.objectList.append(object)
+
+    def getObjects(self):
+        return self.objectList
+
+    def addDoorIn(self, door):
+        self.doorInList.append(door)
+
+    def addDoorOut(self, door):
+        self.doorOutList.append(door)
+
+    def getDoors(self):
+        return self.doorOutList + self.doorInList
 
     def setFirstImpression(self, firstImpression):
         '''sets the node's first impression (OPTIONAL FEATURE)'''
@@ -115,11 +165,43 @@ class MapNode(Thing):
         return self.firstImpression
 
     # commands
-    def look(self):
+    def look(self, tempState, textToDisplay):
+        '''return the respond for the command look'''
         if self.explored == False:
-            return self.firstImpression
+            self.explored = True
+            textToDisplay.append(self.firstImpression)
         else:
-            return self.flavor
+            textToDisplay.append(self.flavor)
+        tempState["time"] += 2
+
+        if len(self.objectList) == 0:
+            textToDisplay.append("There is no object here.")
+        elif len(self.objectList) == 1:
+            textToDisplay.append("There is {}.".format(objectList[0].getLoc()))
+        elif len(self.objectList) == 2:
+            textToDisplay.append("There are {} and {}.".format(self.objectList[0].getLoc(), self.objectList[1].getLoc()))
+        else:
+            response = "There are "
+            for object in self.objectList[:-1]:
+                response += object.getLoc() + ", "
+            response += "and " + self.objectList[-1].getLoc() + "."
+            textToDisplay.append(response)
+
+        '''WIP
+        doorList = [[x,"IN"] for x in self.doorInList] + [[x,"OUT"] for x in self.doorOutList]
+        if len(self.doorList) == 0:
+            textToDisplay.append("There is no door in this room.")
+        elif len(self.doorList) == 1:
+            textToDisplay.append("There is {}.".format(self.doorList[0].getLoc()))
+        elif len(self.doorList) == 2:
+            textToDisplay.append("There are {} and {}.".format(self.doorList[0].getLoc(), self.doorList[1].getLoc()))
+        else:
+            response = "There are "
+            for object in self.doorList[:-1]:
+                response += object.getLoc() + ", "
+            response += "and " + self.doorList[-1].getLoc() + "."
+        '''
+        return tempState, textToDisplay
 
 class Module(Thing):
     '''class for ship modules'''
@@ -229,11 +311,13 @@ class Module(Thing):
 class Object(Thing):
     '''a class for all objects'''
 
-    def __init__(self, name, flavor, flavor2, location, hasInvent=False, hasResource = False):
+    def __init__(self, name, flavor, flavor2, location, room, hasInvent=False, hasResource = False, getable = False):
         super().__init__(name, flavor, flavor2)
         self.hasInvent = hasInvent
         self.hasResource = hasResource
         self.loc = str(location)
+        self.room = room
+        room.addObject(self)
         if hasInvent:
             self.inventory = []
         if hasResource:
@@ -245,23 +329,32 @@ class Object(Thing):
     def getLoc(self):
         return self.loc
 
-class Doors(Thing):
+    def getRoom(self):
+        return self.room
+
+    def look(self, tempState, textToDisplay):
+        textToDisplay.append(self.flavor)
+        return tempState, textToDisplay
+
+class Door(Thing):
     '''a class for all doors'''
 
-    def __init__(self, name, flavor, flavor2, locationIn, locationOut, roomIn, roomOut):
+    def __init__(self, name, flavor, flavor2, roomIn, roomOut, locationIn, locationOut):
         super().__init__(name, flavor, flavor2)
         #The door connect two location so one room is deemed outside
         self.locIn = str(locationIn)
         self.locOut = str(locationOut)
         self.roomIn = roomIn
+        roomIn.addDoorOut(self)
         self.roomOut = roomOut
+        roomOut.addDoorIn(self)
 
     def setLocIn(self, location):
         '''sets the string discribe where the door located in the inside room'''
         self.locIn = str(locationIn)
 
     def getLocIn(self):
-        '''sets the string discribe where the door located in the outside room'''
+        '''gets the string discribe where the door located in the outside room'''
         return self.locIn
 
     def setLocOut(self, location):
@@ -279,6 +372,19 @@ class Doors(Thing):
     def getRoomOut(self):
         '''get the outside room'''
         return self.roomOut
+
+    def look(self, tempState, textToDisplay):
+        textToDisplay.append(self.flavor)
+        return tempState, textToDisplay
+
+    def go(self, tempState, textToDisplay):
+        if tempState["currentMap"] == self.roomIn:
+            tempState["currentMap"] = self.roomOut
+            tempState, textToDisplay = self.roomOut.look(tempState, textToDisplay)
+        elif tempState["currentMap"] == self.roomOut:
+            tempState["currentMap"] = self.roomIn
+            tempState, textToDisplay = self.roomIn.look(tempState, textToDisplay)
+        return tempState, textToDisplay
 
 class ResourceNode(Thing):
     '''a class for node to contain and tranfer resources'''
@@ -455,6 +561,12 @@ class Person():
         self.location = None
         self.isControlling = isControlling
 
+    def __repr__(self):
+        return self.name
+
+    def __eq__(self, other):
+        return self.name == other.name
+
     def control(self, flag):
         '''sets the control to the current character'''
         self.isControlling = flag
@@ -485,3 +597,85 @@ class Person():
     def getLoc(self):
         '''gets current location'''
         return self.getLoc
+
+class Story():
+    '''class for progressing the main story and arranging events'''
+    def __init__(self, name, key, requirements = [], link = None, text = [], isComplete = False):
+        self.name = name
+        self.key = key
+        self.text = text
+        self.requirements = requirements
+        self.link = link
+        self.currentState = -1
+
+    def __repr__(self):
+        return self.name
+
+    def setActive(self, tempState):
+        '''sets the story as active in the tempState'''
+        if self not in tempState['activeStory']:
+            tempState['activeStory'].append(self)
+            self.isComplete = False
+            return True # return True if it was unset and set successfully
+        else:
+            return False # return False if it was already active
+
+    def setLink(self, link):
+        '''sets the linked story node'''
+        self.link = link
+
+    def setText(self, story):
+        '''sets text using normal string or a list from story.txt'''
+        if type(story) == list:
+            lines = getStoryText(story, self.key)
+        else:
+            lines = string.split("\n")
+        self.text = [[]]
+        currentSection = 0
+        for line in lines:
+            if "SEPT" in line:
+                currentSection = int(line[7:].strip())
+            else:
+                if len(self.text) > currentSection:
+                    self.text[currentSection].append(line)
+                else:
+                    for i in range(len(self.text)-1, currentSection):
+                        self.text.append([])
+                    self.text[currentSection].append(line)
+
+    def getText(self):
+        '''gets the text of the story'''
+        return self.text
+
+    def complete(self, tempState):
+        '''complete the story and link the next one'''
+        tempState["activeStory"].pop(tempState["activeStory"].index(self))
+        if self.link == None:
+            pass
+        elif type(self.link) == list:
+            tempState["activeStory"] += self.link
+        else:
+            tempState["activeStory"].append(self.link)
+
+    def checkReqs(self, tempState, textToDisplay):
+        '''check whether tempState match the requirements to progress story state'''
+        if self.currentState != len(self.text)-1:
+            match = True
+            if len(self.requirements[self.currentState+1]) == 0:
+                pass
+            else:
+                for func in self.requirements[self.currentState+1]:
+                    if not func(tempState): match = False
+            if match:
+                self.currentState += 1
+                textToDisplay += self.text[self.currentState]
+        elif self.currentState == len(self.text)-1:
+            match = True
+            if len(self.requirements[self.currentState+1]) == 0:
+                pass
+            else:
+                for func in self.requirements[self.currentState+1]:
+                    if not func(tempState): match = False
+            if match:
+                self.complete(tempState)
+        return tempState, textToDisplay
